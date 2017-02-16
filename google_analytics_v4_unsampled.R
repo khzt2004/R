@@ -10,4 +10,5 @@ unsampled_data_fetch <- google_analytics_4(id, date_range = c("2017-01-01", "201
                                                              metrics = c("sessions","bounceRate"), 
                                                              dimensions = c("date","source", "medium"),
                                                              anti_sample = TRUE)
+write.csv(unsampled_data_fetch, "My Data Export.csv")
                                                              
