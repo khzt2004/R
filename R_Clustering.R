@@ -1,3 +1,4 @@
+# http://stackoverflow.com/questions/30260317/assign-class-to-data-frame-after-clustering
 
 library(data.table)
 library(readxl)
