@@ -11,7 +11,6 @@ sp500_keystats <- tq_index("SP500", use_fallback = TRUE) %>%
 
 sp500_keystats_selected <- select(sp500_keystats, c(symbol, company, Market.Capitalization))
 
-# sp500_filter <- filter(sp500_keystats, symbol == "jpm")
   
 stocks_returns_yearly <- sp500 %>%
   group_by(symbol) %>%
@@ -21,6 +20,11 @@ stocks_returns_yearly <- sp500 %>%
                col_rename = "yearly.returns") %>%
   mutate(year = year(date)) %>%
   left_join(sp500_keystats_selected, by="symbol")
+
+# filter by values
+stocks_returns_yearly_spread <- select(stocks_returns_yearly, -date) %>%
+  spread(year, yearly.returns) %>%
+  filter(`2017` > 0.1 & `2016` > 0.1 & `2015` > 0.1 & `2014` > 0)
 
 
 rpivotTable(stocks_returns_yearly)
