@@ -26,10 +26,14 @@ stocks_returns_yearly <- sp500 %>%
 # filter by values
 stocks_returns_yearly_spread <- select(stocks_returns_yearly, -date) %>%
   spread(year, yearly.returns) %>%
-  filter(`2017` > 0.1 & `2016` > 0.1 & `2015` > 0.1 & `2014` > 0)
+  filter(`2007` != "" 
+         & `2014` > 0 
+         & `2017` > 0 
+         & `2016` > 0 
+         & `2015` > 0 ) %>%
+  gather(year, yearly.returns, 4:14)
 
-
-rpivotTable(stocks_returns_yearly)
+rpivotTable(stocks_returns_yearly_spread)
 
 # get info on nasdaq stocks
 
@@ -51,20 +55,22 @@ nasdaq_stocks_returns_yearly <- nasdaq %>%
   mutate(year = year(date)) %>%
   left_join(nasdaq_keystats_selected, by="symbol")
 
-# filter by values
+# filter by values, gather back for rpivotTable
 nasdaq_returns_yearly_spread <- select(nasdaq_stocks_returns_yearly, -date) %>%
   spread(year, yearly.returns) %>%
   filter(`2007` != "" 
          & `2014` > 0 
          & `2017` > 0 
          & `2016` > 0 
-         & `2015` > 0 )
+         & `2015` > 0 ) %>%
+  gather(year, yearly.returns, 8:18)
+
+# make pivot table
+rpivotTable(nasdaq_returns_yearly_spread)
 
 # test filter
 nasdaq_returns_yearly_spread_test <- nasdaq_stocks_returns_yearly %>%
   filter(symbol == "NVDA")
-
-rpivotTable(nasdaq_returns_yearly_spread)
 
 # exporting to excel - create filename
 
