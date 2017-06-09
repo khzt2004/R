@@ -6,10 +6,13 @@ library(markovchain)
 library(ggthemes)
 library(ggrepel)
 library(RColorBrewer)
+library(visNetwork)
+library(expm)
+library(stringr)
 
 # simulating the "real" data
 set.seed(354)
-df2 <- data.frame(client_id = sample(c(1:1000), 5000, replace = TRUE),
+df2 <- data.frame(customer_id = sample(c(1:1000), 5000, replace = TRUE),
                   date = sample(c(1:32), 5000, replace = TRUE),
                   channel = sample(c(0:9), 5000, replace = TRUE,
                                    prob = c(0.1, 0.15, 0.05, 0.07, 0.11, 0.07, 0.13, 0.1, 0.06, 0.16)))
@@ -18,7 +21,7 @@ df2$channel <- paste0('channel_', df2$channel)
 
 # aggregating channels to the paths for each customer
 df2 <- df2 %>%
-  group_by(client_id) %>%
+  group_by(customer_id) %>%
   summarise(path = paste(channel, collapse = ' > '),
             # assume that all paths were finished with conversion
             conv = 1,
