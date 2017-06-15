@@ -29,3 +29,23 @@ Motion=gvisMotionChart(Fruits,
                        idvar="Fruit", 
                        timevar="Year")
 plot(Motion)
+
+# stacked bar chart
+df <- data.frame(country=c("US", "GB", "BR"), 
+                 val1=c(1,3,4), 
+                 val2=c(23,12,32))
+
+## Bar chart
+Bar1 <- gvisBarChart(df, xvar="country", yvar=c("val1", "val2"))
+plot(Bar1)
+
+## Stacked bar chart
+Bar2 <- gvisBarChart(df, xvar="country", yvar=c("val1", "val2"),
+                     options=list(isStacked=TRUE))
+plot(Bar2)
+
+## Stacked column chart
+Col2 <- gvisColumnChart(df, xvar="country", yvar=c("val1", "val2"),
+                        options=list(isStacked=TRUE))
+plot(Col2)
+
