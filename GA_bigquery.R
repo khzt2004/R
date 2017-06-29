@@ -13,7 +13,10 @@ df_bigquery1 <- df_bigquery %>%
   mutate(visitStartTime_stamp = ymd_hms(as.POSIXct(visitStartTime, origin="1970-01-01"))) %>%
   mutate(day = wday(date, label = TRUE, abbr = FALSE)) %>%
   mutate(month = month(date, label = TRUE, abbr = FALSE)) %>%
-  mutate(hour = hour(visitStartTime_stamp))
+  mutate(hour = hour(visitStartTime_stamp)) %>%
+  mutate(minute = minute(visitStartTime_stamp)) %>%
+  mutate(second = second(visitStartTime_stamp)) %>%
+  mutate(visitStartTime_hms = format(visitStartTime_stamp, "%H:%M:%S"))
 
 mutate(departure = make_datetime(year, month, day, hour, minute))
-rpivotTable(df_bigquery)
+rpivotTable(df_bigquery1)
