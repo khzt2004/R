@@ -3,9 +3,11 @@ library(tidyverse)
 library(data.table)
 library(rpivotTable)
 library(lubridate)
+library(readxl)
 
 # replace file name with name of appropriate source file 
-df <- readWorksheetFromFile("results-GAData.xlsx", sheet = 1)
+# df <- readWorksheetFromFile("results-GAData.xlsx", sheet = 1)
+df <- read_excel("results-GAData.xlsx")
 df_bigquery <- as_tibble(df)
 
 df_bigquery1 <- df_bigquery %>%
