@@ -54,7 +54,7 @@ cluster3 <- subset(kw_with_cluster, subset=kmeans5 == 3)
 cluster4 <- subset(kw_with_cluster, subset=kmeans5 == 4)
 cluster5 <- subset(kw_with_cluster, subset=kmeans5 == 5)
 
-# Selecting ‘k’ Using Elbow Method
+# Selecting k means Using Elbow Method
 
 #accumulator for cost results
 cost_df <- data.frame()
