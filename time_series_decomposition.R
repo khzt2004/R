@@ -1,7 +1,13 @@
 library(googleAnalyticsR)
 library(tidyverse)
 library(corrplot)
-ga_auth()
+library(forecast)
+library(xts)
+library(CausalImpact)
+
+#specify the working directory if unable to authenticate
+setwd("D:/ToBeSaved/K6O Documents")
+ga_auth(new_user = TRUE)
 
 # Pull a full list of the views that you have access to
 my_accounts <- ga_account_list()
@@ -26,10 +32,6 @@ web_data <- google_analytics_4(my_id,
 # web_data_test <- web_data_test %>%
 #   select(2:8)
 
-## use tidyverse to pivot the data
-library(dplyr)
-library(tidyr)
-
 ## get only desktop rows, and the date, channelGrouping and sessions columns
 pivoted <- web_data %>% 
   filter(deviceCategory == "desktop") %>% 
@@ -48,7 +50,7 @@ plot(web_data_ts, axes = FALSE)
 decomp <- decompose(web_data_ts[, "Organic Search"])
 plot(decomp)
 
-library(forecast)
+
 ## performs decomposition and smoothing
 fit <- ets(web_data_ts[, "Organic Search"])
 ## makes the forecast
@@ -60,17 +62,16 @@ fit2 <- HoltWinters(web_data_ts[, "Organic Search"])
 fc2 <- forecast(fit2, h = 25)
 plot(fc2)
 
-library(xts)
 
 ## create a time-series zoo object
 web_data_xts <- xts(pivoted[-1], order.by = as.Date(pivoted$date), frequency = 7)
 
-library(CausalImpact)
-pre.period <- as.Date(c("2016-02-01","2016-05-14"))
-post.period <- as.Date(c("2016-05-15","2016-07-15"))
+
+pre.period <- as.Date(c("2017-01-01","2017-03-14"))
+post.period <- as.Date(c("2017-05-15","2017-07-15"))
 
 ## data in order of response, predictor1, predictor2, etc.
-model_data <- web_data_xts[,c("Video","Social","Direct")]
+model_data <- web_data_xts[,c("Email","Social","Direct")]
 
 
 impact <- CausalImpact(model_data,  pre.period, post.period)
