@@ -33,7 +33,7 @@ google_heatmap %>%
 
 # FB heatmap
 fb_heatmap <- read.csv("fb_heatmap.csv", sep=",")
-# fb_heatmap1 <- spread(google_heatmap, Day.of.Week.Name, Sessions, fill = 0)
+# fb_heatmap1 <- spread(fb_heatmap, Day.of.Week.Name, Sessions, fill = 0)
 fb_heatmap$Day.of.Week.Name <- factor(fb_heatmap$Day.of.Week.Name, c("Sunday", "Saturday", "Friday", "Thursday", "Wednesday", "Tuesday", "Monday"))
 fb_heatmap$wDay <- ifelse(fb_heatmap$Day.of.Week.Name %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
 
