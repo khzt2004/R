@@ -72,13 +72,9 @@ unsampled_data_fetch_deviceLP <- google_analytics_4(id, date_range = c(startDate
                                                     dimensions = c("deviceCategory", "landingPagePath"),
                                                     segments = c(seg_obj_Google, seg_obj_FB))
 
-unsampled_data_fetch_adwordcampaigns <- unsampled_data_fetch_adwordcampaigns %>%
-  select(-Campaign.x, Campaign.y) %>%
-  gather(metrics, values, 2:6) %>% 
-  spread(adGroup, values)
 
 unsampled_data_fetch_deviceLP$sessionsDelt <- round(Delt(unsampled_data_fetch_deviceLP$sessions.d2, unsampled_data_fetch_deviceLP$sessions.d1), 2)
-
+unsampled_data_fetch_deviceLP$usersDelt <- round(Delt(unsampled_data_fetch_deviceLP$users.d2, unsampled_data_fetch_deviceLP$users.d1), 2)
 
 unsampled_data_fetch_device_AdKeyword <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                                             metrics = c("users", "newUsers", "sessions", "avgTimeOnPage", "bounceRate", "pageviewsPerSession", "exitRate", "goal4Completions", "goal5Completions", "transactionsPerSession"), 
