@@ -46,14 +46,36 @@ unsampled_data_fetch_Google <- google_analytics_4(id, date_range = c(startDate, 
 
 unsampled_data_fetch_campaigns <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                                      metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
-                                                     dimensions = c("Campaign"),
-                                                     segments = c(seg_obj_SpamFiltered, seg_obj_Google, seg_obj_FB),
+                                                     dimensions = c("Campaign", "adGroup"),
+                                                     segments = c(seg_obj_Google, seg_obj_FB),
                                                      anti_sample = TRUE)
 
+unsampled_data_fetch_adwordcampaigns <- google_analytics_4(id, date_range = c(startDate, endDate), 
+                                                     metrics = c("impressions", "adClicks", "adCost", "CTR", "CPC"), 
+                                                     dimensions = c("Campaign", "adGroup"),
+                                                     anti_sample = TRUE)
+
+adwordsCombined <- unsampled_data_fetch_campaigns %>%
+  left_join(unsampled_data_fetch_adwordcampaigns, by = "adGroup") %>%
+  select(-c(Campaign.x, Campaign.y)) %>%
+  filter(segment == "Training Campaign_Google") %>%
+  select(-segment) %>%
+  gather(metrics, values, 2:16) %>% 
+  spread(adGroup, values)
+
+adwordsCombined[, 2:5] <- round(adwordsCombined[, 2:5], 2)
+
+
+  
 unsampled_data_fetch_deviceLP <- google_analytics_4(id, date_range = c(startDate, endDate, startDate2, endDate2), 
                                                     metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
                                                     dimensions = c("deviceCategory", "landingPagePath"),
                                                     segments = c(seg_obj_Google, seg_obj_FB))
+
+unsampled_data_fetch_adwordcampaigns <- unsampled_data_fetch_adwordcampaigns %>%
+  select(-Campaign.x, Campaign.y) %>%
+  gather(metrics, values, 2:6) %>% 
+  spread(adGroup, values)
 
 unsampled_data_fetch_deviceLP$sessionsDelt <- round(Delt(unsampled_data_fetch_deviceLP$sessions.d2, unsampled_data_fetch_deviceLP$sessions.d1), 2)
 
