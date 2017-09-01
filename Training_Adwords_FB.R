@@ -7,6 +7,9 @@ library(lubridate)
 library(rpivotTable)
 library(TTR)
 library(googlesheets)
+library(quantmod)
+library(grid)
+library(gridExtra)
 
 
 ga_auth()
@@ -27,36 +30,39 @@ seg_obj_SpamFiltered <- segment_ga4("googleusercontent network domain", segment_
 
 startDate <- "2017-08-19"
 endDate <- "2017-08-25"
+startDate2 <- "2017-08-12"
+endDate2 <- "2017-08-18"
 
 unsampled_data_fetch_FB <- google_analytics_4(id, date_range = c(startDate, endDate), 
-                                           metrics = c("sessions", "pageViews", "entrances", "bounceRate", "avgTimeOnPage", "exitRate"), 
-                                           dimensions = c("dayOfWeekName", "hour"),
-                                           segments = seg_obj_FB,
-                                           anti_sample = TRUE)
-
-unsampled_data_fetch_Google <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                               metrics = c("sessions", "pageViews", "entrances", "bounceRate", "avgTimeOnPage", "exitRate"), 
                                               dimensions = c("dayOfWeekName", "hour"),
-                                              segments = seg_obj_Google,
-                                              anti_sample = TRUE)
+                                              segments = seg_obj_FB)
 
-unsampled_data_fetch_campaigns <- google_analytics_4(id, date_range = c(startDate, endDate), 
-                                                  metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
-                                                  dimensions = c("Campaign"),
-                                                  segments = c(seg_obj_SpamFiltered, seg_obj_Google, seg_obj_FB),
+unsampled_data_fetch_Google <- google_analytics_4(id, date_range = c(startDate, endDate), 
+                                                  metrics = c("sessions", "pageViews", "entrances", "bounceRate", "avgTimeOnPage", "exitRate"), 
+                                                  dimensions = c("dayOfWeekName", "hour"),
+                                                  segments = seg_obj_Google,
                                                   anti_sample = TRUE)
 
-unsampled_data_fetch_deviceLP <- google_analytics_4(id, date_range = c(startDate, endDate), 
-                                                     metrics = c("users", "newUsers", "sessions", "avgTimeOnPage", "bounceRate", "pageviewsPerSession", "exitRate", "goal4Completions", "goal5Completions", "transactionsPerSession"), 
-                                                     dimensions = c("deviceCategory", "landingPagePath"),
-                                                     segments = c(seg_obj_Google, seg_obj_FB),
+unsampled_data_fetch_campaigns <- google_analytics_4(id, date_range = c(startDate, endDate), 
+                                                     metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
+                                                     dimensions = c("Campaign"),
+                                                     segments = c(seg_obj_SpamFiltered, seg_obj_Google, seg_obj_FB),
                                                      anti_sample = TRUE)
 
+unsampled_data_fetch_deviceLP <- google_analytics_4(id, date_range = c(startDate, endDate, startDate2, endDate2), 
+                                                    metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
+                                                    dimensions = c("deviceCategory", "landingPagePath"),
+                                                    segments = c(seg_obj_Google, seg_obj_FB))
+
+unsampled_data_fetch_deviceLP$sessionsDelt <- round(Delt(unsampled_data_fetch_deviceLP$sessions.d2, unsampled_data_fetch_deviceLP$sessions.d1), 2)
+
+
 unsampled_data_fetch_device_AdKeyword <- google_analytics_4(id, date_range = c(startDate, endDate), 
-                                                    metrics = c("users", "newUsers", "sessions", "avgTimeOnPage", "bounceRate", "pageviewsPerSession", "exitRate", "goal4Completions", "goal5Completions", "transactionsPerSession"), 
-                                                    dimensions = c("deviceCategory", "adContent", "keyword"),
-                                                    segments = c(seg_obj_Google, seg_obj_FB),
-                                                    anti_sample = TRUE)
+                                                            metrics = c("users", "newUsers", "sessions", "avgTimeOnPage", "bounceRate", "pageviewsPerSession", "exitRate", "goal4Completions", "goal5Completions", "transactionsPerSession"), 
+                                                            dimensions = c("deviceCategory", "adContent", "keyword"),
+                                                            segments = c(seg_obj_Google, seg_obj_FB),
+                                                            anti_sample = TRUE)
 # demographics may not be accurate
 # unsampled_data_fetch_demographics <- google_analytics_4(id, date_range = c(startDate, endDate), 
 #                                                            metrics = c("users", "newUsers", "sessions", "avgTimeOnPage", "bounceRate", "pageviewsPerSession", "avgSessionDuration", "goal4Completions", "goal5Completions", "transactionsPerSession"), 
@@ -93,7 +99,7 @@ google_heatmap %>%
   theme(axis.text=element_text(size=9)) + 
   theme(legend.title=element_text(size=8)) +
   theme(legend.text=element_text(size=6))
-  # annotate("rect", xmin=-0.5, xmax=8, ymin=-Inf, ymax=Inf, alpha=.2, fill="blue")
+# annotate("rect", xmin=-0.5, xmax=8, ymin=-Inf, ymax=Inf, alpha=.2, fill="blue")
 
 
 # FB heatmap
@@ -124,7 +130,7 @@ fb_heatmap %>%
   theme(axis.text=element_text(size=9)) + 
   theme(legend.title=element_text(size=8)) +
   theme(legend.text=element_text(size=6))
-  # annotate("rect", xmin=-0.5, xmax=8, ymin=-Inf, ymax=Inf, alpha=.2, fill="blue")
+# annotate("rect", xmin=-0.5, xmax=8, ymin=-Inf, ymax=Inf, alpha=.2, fill="blue")
 
 # create google sheets
 
