@@ -10,6 +10,7 @@ library(googlesheets)
 library(quantmod)
 library(grid)
 library(gridExtra)
+library(reshape2)
 
 
 
@@ -60,11 +61,14 @@ adwordsCombined <- unsampled_data_fetch_campaigns %>%
   filter(segment == "Training Campaign_Google") %>%
   select(-segment) %>%
   gather(metrics, values, 2:31) %>% 
-  spread(adGroup, values)
-  
+  spread(adGroup, values) %>%
+  gather(Campaign, Values, 2:5) %>%
+  separate(metrics, c("metric", "dateRange")) %>%
+  spread(dateRange, Values)
 
-adwordsCombined[, 2:5] <- round(adwordsCombined[, 2:5], 2)
-adwordsCombined = transform(adwordsCombined, metrics = colsplit(metrics, "\\.", names = c('metric', 'dateRange')))
+adwordsCombined[, 3:4] <- round(adwordsCombined[, 3:4], 2)
+
+
 
 unsampled_data_fetch_deviceLP <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                                     metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
