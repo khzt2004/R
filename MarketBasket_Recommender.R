@@ -7,6 +7,8 @@
 # https://stackoverflow.com/questions/45578516/r-aggregate-and-collapse-several-cells-into-one
 # https://stackoverflow.com/questions/15933958/collapse-concatenate-aggregate-a-column-to-a-single-comma-separated-string-w
 # http://rstatistics.net/association-mining-with-r/
+# https://rpubs.com/cheverne/associationrules_marketbasketanalysis
+# https://rstudio-pubs-static.s3.amazonaws.com/267119_9a033b870b9641198b19134b7e61fe56.html -> ECLAT
 
 library(arules)  # association rules
 library(arulesViz)  # data visualization of association rules
