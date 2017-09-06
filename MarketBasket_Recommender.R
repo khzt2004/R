@@ -1,8 +1,10 @@
 # Association Rules for Market Basket Analysis (R)
+# http://rpubs.com/Adhislacy/281337
 
 library(arules)  # association rules
 library(arulesViz)  # data visualization of association rules
 library(RColorBrewer)  # color palettes for plots
+library(tidyverse)
 
 data(Groceries)  # grocery transactions object from arules package
 
@@ -77,6 +79,13 @@ plot(top.vegie.rules, method="graph",
      control=list(type="items"), 
      shading = "lift")
 dev.off()  
+
+Groceryrules_df <- as(second.rules, "data.frame")
+Groceryrules_df <- Groceryrules_df %>%
+  separate(rules, c("LHS", "RHS"), sep = "=>")
+filteredrules_df <- Groceryrules_df %>%
+  # filter(RHS %like% c("veg"))
+  filter(grepl("dairy", RHS, fixed = TRUE))
 
 # Suggestions for the student:
 # Suppose your client is someone other than the local farmer,
