@@ -3,6 +3,9 @@
 # https://github.com/krupanss/Market-Basket-Analysis-R/blob/master/MarketBasketAnalysis.Rmd
 # https://educationalresearchtechniques.com/2016/08/01/market-basket-analysis-in-r/
 # http://www.rpubs.com/Mughundhan/268460  -> use this first
+# https://stackoverflow.com/questions/17313450/how-to-convert-data-frame-to-transactions-for-arules
+# https://stackoverflow.com/questions/45578516/r-aggregate-and-collapse-several-cells-into-one
+# https://stackoverflow.com/questions/15933958/collapse-concatenate-aggregate-a-column-to-a-single-comma-separated-string-w
 # http://rstatistics.net/association-mining-with-r/
 
 library(arules)  # association rules
