@@ -1,5 +1,9 @@
 # Association Rules for Market Basket Analysis (R)
 # http://rpubs.com/Adhislacy/281337
+# https://github.com/krupanss/Market-Basket-Analysis-R/blob/master/MarketBasketAnalysis.Rmd
+# https://educationalresearchtechniques.com/2016/08/01/market-basket-analysis-in-r/
+# http://www.rpubs.com/Mughundhan/268460  -> use this first
+# http://rstatistics.net/association-mining-with-r/
 
 library(arules)  # association rules
 library(arulesViz)  # data visualization of association rules
@@ -13,6 +17,11 @@ print(dim(Groceries))
 
 print(dim(Groceries)[1])  # 9835 market baskets for shopping trips
 print(dim(Groceries)[2])  # 169 initial store items  
+
+summary(Groceries)
+
+# find the top 15 items
+itemFrequencyPlot(groceries, topN=15)
 
 # examine frequency for each item with support greater than 0.025
 pdf(file="fig_market_basket_initial_item_support.pdf", 
@@ -48,23 +57,33 @@ first.rules <- apriori(groceries,
                        parameter = list(support = 0.001, confidence = 0.05))
 print(summary(first.rules))  # yields 69,921 rules... too many
 
+FirstGroceryrules_df <- as(first.rules, "data.frame")
+FirstGroceryrules_df <- FirstGroceryrules_df %>%
+  separate(rules, c("LHS", "RHS"), sep = "=>")
+
+
+
+
 # select association rules using thresholds for support and confidence 
+# yields 344 rules
 second.rules <- apriori(groceries, 
                         parameter = list(support = 0.025, confidence = 0.05))
-print(summary(second.rules))  # yields 344 rules
+print(summary(second.rules))  
+SecondGroceryrules_df <- FirstGroceryrules_df %>%
+  filter(support >= 0.025 & confidence >= 0.05)
 
 # data visualization of association rules in scatter plot
-pdf(file="fig_market_basket_rules.pdf", width = 8.5, height = 8.5)
+# pdf(file="fig_market_basket_rules.pdf", width = 8.5, height = 8.5)
 plot(second.rules, 
      control=list(jitter=2, col = rev(brewer.pal(9, "Greens")[4:9])),
      shading = "lift")   
-dev.off()    
+# dev.off()    
 
 # grouped matrix of rules 
-pdf(file="fig_market_basket_rules_matrix.pdf", width = 8.5, height = 8.5)
+# pdf(file="fig_market_basket_rules_matrix.pdf", width = 8.5, height = 8.5)
 plot(second.rules, method="grouped",   
      control=list(col = rev(brewer.pal(9, "Greens")[4:9])))
-dev.off()    
+# dev.off()    
 
 # select rules with vegetables in consequent (right-hand-side) item subsets
 vegie.rules <- subset(second.rules, subset = rhs %pin% "vegetables")
@@ -80,16 +99,11 @@ plot(top.vegie.rules, method="graph",
      shading = "lift")
 dev.off()  
 
+plot(rules,method="graph",interactive=TRUE,shading=NA)
+
 Groceryrules_df <- as(second.rules, "data.frame")
 Groceryrules_df <- Groceryrules_df %>%
   separate(rules, c("LHS", "RHS"), sep = "=>")
 filteredrules_df <- Groceryrules_df %>%
   # filter(RHS %like% c("veg"))
   filter(grepl("dairy", RHS, fixed = TRUE))
-
-# Suggestions for the student:
-# Suppose your client is someone other than the local farmer,
-# a meat producer/butcher, dairy, or brewer perhaps.
-# Determine association rules relevant to your client's products
-# guided by the market basket model. What recommendations
-# would you make about future marketplace actions?
