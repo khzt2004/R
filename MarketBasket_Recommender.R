@@ -9,6 +9,7 @@
 # http://rstatistics.net/association-mining-with-r/
 # https://rpubs.com/cheverne/associationrules_marketbasketanalysis
 # https://rstudio-pubs-static.s3.amazonaws.com/267119_9a033b870b9641198b19134b7e61fe56.html -> ECLAT
+# https://benjnmoss.wordpress.com/2017/02/13/market-basket-analysis-in-alteryx/
 
 library(arules)  # association rules
 library(arulesViz)  # data visualization of association rules
