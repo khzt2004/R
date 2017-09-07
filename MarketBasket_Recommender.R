@@ -15,67 +15,90 @@ library(arules)  # association rules
 library(arulesViz)  # data visualization of association rules
 library(RColorBrewer)  # color palettes for plots
 library(tidyverse)
+library(lubridate)
 
-data(Groceries)  # grocery transactions object from arules package
+raw_data <- read_csv("https://raw.githubusercontent.com/kh7393/Market-Basket/master/Online%20Retail_new.csv")
+raw_data <- raw_data %>%
+  mutate(InvoiceDate = format(InvoiceDate, "%H:%M:%S"))
+  mutate(InvoiceDate = make_datetime(day, month, year, hour, minute))
+
+# show countries
+raw_data1 <- raw_data %>% select(Country, InvoiceNo) %>%
+  group_by(Country) %>%
+  summarize(InvoiceNo, n())
+
+
+# Remove the canceled/refunded orders 
+# Remove rows with invalid product description 
+
+# select the rows with relevant data and convert them to S4 object
+
+transaction_detail <- aggregate(raw_data$AirlineDescription ~ raw_data$InvoiceNo,
+                                FUN=paste,collapse=',')
+transaction_itemsets<-transaction_detail[,-1]
+write(transaction_itemsets,"itemsets2.csv")
+itemsets_txn<-read.transactions("itemsets2.csv",format="basket",rm.duplicates=TRUE,sep=",")
 
 # show the dimensions of the transactions object
-print(dim(Groceries))
+print(dim(itemsets_txn))
 
-print(dim(Groceries)[1])  # 9835 market baskets for shopping trips
-print(dim(Groceries)[2])  # 169 initial store items  
+print(dim(itemsets_txn)[1])  # X no. market baskets for flight trips
+print(dim(itemsets_txn)[2])  # X no. of initial store items
 
-summary(Groceries)
+# summary of dataset including most frequent items, itemset/transaction length distribution
+summary(itemsets_txn)
 
 # find the top 15 items
-itemFrequencyPlot(groceries, topN=15)
+itemFrequencyPlot(itemsets_txn, topN=15)
 
 # examine frequency for each item with support greater than 0.025
 pdf(file="fig_market_basket_initial_item_support.pdf", 
     width = 8.5, height = 11)
-itemFrequencyPlot(Groceries, support = 0.025, cex.names=0.8, xlim = c(0,0.3),
+itemFrequencyPlot(itemsets_txn, support = 0.025, cex.names=0.8, xlim = c(0,0.3),
                   type = "relative", horiz = TRUE, col = "dark red", las = 1,
                   xlab = paste("Proportion of Market Baskets Containing Item",
                                "\n(Item Relative Frequency or Support)"))
 dev.off()    
 
 # explore possibilities for combining similar items
-print(head(itemInfo(Groceries))) 
-print(levels(itemInfo(Groceries)[["level1"]]))  # 10 levels... too few 
-print(levels(itemInfo(Groceries)[["level2"]]))  # 55 distinct levels
+print(head(itemInfo(itemsets_txn))) 
+print(levels(itemInfo(itemsets_txn)[["level1"]]))  # 10 levels... too few 
+print(levels(itemInfo(itemsets_txn)[["level2"]]))  # 55 distinct levels
 
 # aggregate items using the 55 level2 levels for food categories
 # to create a more meaningful set of items
-groceries <- aggregate(Groceries, itemInfo(Groceries)[["level2"]])  
+itemsets_txn1 <- aggregate(itemsets_txn, itemInfo(itemsets_txn)[["level2"]])  
 
 print(dim(groceries)[1])  # 9835 market baskets for shopping trips
 print(dim(groceries)[2])  # 55 final store items (categories)  
 
 pdf(file="fig_market_basket_final_item_support.pdf", width = 8.5, height = 11)
-itemFrequencyPlot(groceries, support = 0.025, cex.names=1.0, xlim = c(0,0.5),
+itemFrequencyPlot(itemsets_txn, support = 0.025, cex.names=1.0, xlim = c(0,0.5),
                   type = "relative", horiz = TRUE, col = "blue", las = 1,
                   xlab = paste("Proportion of Market Baskets Containing Item",
                                "\n(Item Relative Frequency or Support)"))
 dev.off()   
 
+
+
 # obtain large set of association rules for items by category and all shoppers
 # this is done by setting very low criteria for support and confidence
-first.rules <- apriori(groceries, 
+first.rules <- apriori(itemsets_txn, 
                        parameter = list(support = 0.001, confidence = 0.05))
 print(summary(first.rules))  # yields 69,921 rules... too many
-
-FirstGroceryrules_df <- as(first.rules, "data.frame")
-FirstGroceryrules_df <- FirstGroceryrules_df %>%
+ 
+# for splitting LHS & RHS
+Firstitemsets_txnrules_df <- as(first.rules, "data.frame")
+Firstitemsets_txnrules_df <- Firstitemsets_txnrules_df %>%
   separate(rules, c("LHS", "RHS"), sep = "=>")
-
-
 
 
 # select association rules using thresholds for support and confidence 
 # yields 344 rules
-second.rules <- apriori(groceries, 
+second.rules <- apriori(itemsets_txn, 
                         parameter = list(support = 0.025, confidence = 0.05))
 print(summary(second.rules))  
-SecondGroceryrules_df <- FirstGroceryrules_df %>%
+Seconditemsets_txnrules_df <- Firstitemsets_txnrules_df %>%
   filter(support >= 0.025 & confidence >= 0.05)
 
 # data visualization of association rules in scatter plot
@@ -107,9 +130,16 @@ dev.off()
 
 plot(rules,method="graph",interactive=TRUE,shading=NA)
 
-Groceryrules_df <- as(second.rules, "data.frame")
-Groceryrules_df <- Groceryrules_df %>%
-  separate(rules, c("LHS", "RHS"), sep = "=>")
-filteredrules_df <- Groceryrules_df %>%
-  # filter(RHS %like% c("veg"))
-  filter(grepl("dairy", RHS, fixed = TRUE))
+itemsets_txnrules_df <- as(second.rules, "data.frame")
+itemsets_txnrules_df <- itemsets_txnrules_df %>%
+  separate(rules, c("LHS", "RHS"), sep = "=>") %>%
+  mutate(InverseConfidence = (support * lift) / confidence)
+
+# final table of recommended rules to use filtered by max confidence
+# if LHS is bought then RHS is purchased
+rules_final <- itemsets_txnrules_df %>%
+  filter(confidence > InverseConfidence)
+
+# non-case sensitive filter
+filteredrules_df <- rules_final %>%
+  filter(grepl("hotel", RHS, ignore.case = TRUE))
