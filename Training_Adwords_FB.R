@@ -30,10 +30,10 @@ seg_obj_Google <- segment_ga4("Training Campaign_Google", segment_id = segment_f
 segment_for_call_SpamFiltered <- "gaid::1PVeiyEpTWW8guG2ff3rjg"
 seg_obj_SpamFiltered <- segment_ga4("googleusercontent network domain", segment_id = segment_for_call_SpamFiltered)
 
-startDate <- "2017-08-26"
-endDate <- "2017-09-01"
-startDate2 <- "2017-08-19"
-endDate2 <- "2017-08-25"
+startDate <- "2017-09-02"
+endDate <- "2017-09-08"
+startDate2 <- "2017-08-26"
+endDate2 <- "2017-09-01"
 
 unsampled_data_fetch_FB <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                               metrics = c("users", "sessions", "pageViews", "entrances", "bounceRate", "avgTimeOnPage", "exitRate"), 
@@ -72,9 +72,11 @@ adwordsCombined[, 3:4] <- round(adwordsCombined[, 3:4], 2)
 
 unsampled_data_fetch_deviceLP <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                                     metrics = c("users", "newUsers", "sessions", "bounceRate", "pageviewsPerSession", "entrances", "avgTimeOnPage", "exitRate", "avgSessionDuration", "transactionsPerSession"), 
-                                                    dimensions = c("deviceCategory", "landingPagePath"),
+                                                    dimensions = c("adGroup", "deviceCategory", "landingPagePath"),
                                                     segments = c(seg_obj_Google, seg_obj_FB))
 
+unsampled_data_fetch_deviceLP <- unsampled_data_fetch_deviceLP %>%
+  filter(!grepl("(not set)", adGroup, ignore.case = TRUE))
 
 unsampled_data_fetch_deviceLP$sessionsDelt <- round(Delt(unsampled_data_fetch_deviceLP$sessions.d2, unsampled_data_fetch_deviceLP$sessions.d1), 2)
 unsampled_data_fetch_deviceLP$usersDelt <- round(Delt(unsampled_data_fetch_deviceLP$users.d2, unsampled_data_fetch_deviceLP$users.d1), 2)
