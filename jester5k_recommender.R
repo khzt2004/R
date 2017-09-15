@@ -133,7 +133,7 @@ size_sets
 model_to_evaluate <- "IBCF"
 model_parameters <- NULL
 
-getData(eval_sets,"train")
+getData(eval_sets, "train")
 
 eval_recommender <- Recommender(data = getData(eval_sets, "train"),method = model_to_evaluate, parameter = model_parameters)
 #setting the number of items to be set for recommendations
