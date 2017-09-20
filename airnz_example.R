@@ -18,7 +18,6 @@ raw_data <- raw_data1 %>%
   mutate(flightSearches = ifelse(is.na(flightSearches),0,flightSearches)) %>%
   mutate(flightbookings = ifelse(is.na(flightbookings),0,flightbookings))
   
-
 raw_data[,5:32] <- lapply(raw_data[, 5:32], gsub, pattern = "null", replacement = NA, fixed = TRUE)
 
 raw_data <- raw_data %>%
@@ -32,7 +31,11 @@ raw_data <- raw_data %>%
   select(yearMonth, 5:32) %>%
   gather("EventCategory", "EventAction", -yearMonth) %>%
   group_by(yearMonth, EventCategory, EventAction) %>%
-  summarize(count = n())
+  summarize(count = n()) %>%
+  unite(EventCategory_Action, EventCategory, EventAction) %>%
+  spread(EventCategory_Action, count)
+
+cor(raw_data$Sitetype_NA, raw_data$storefront_Singapore, use = "complete.obs")
 
 
 
