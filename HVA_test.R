@@ -27,6 +27,9 @@ raw_data[,5:32][!is.na(raw_data[,5:32])] <- 1
 raw_data[,5:34][is.na(raw_data[,5:34])] <- 0
 raw_data[,5:34] <- sapply( raw_data[,5:34], as.numeric )
 
+# compute correlation: event category vs flightsearches/bookings
+coff_df <- data.frame(cor(raw_data[,5:32], raw_data[c("flightSearches", "flightbookings")], use = "complete.obs"))
+
 # group by month, summary count of event category
 raw_data <- raw_data %>%
   filter(grepl("2016|2017", yearMonth, ignore.case = TRUE)) %>%
@@ -79,15 +82,14 @@ raw_data <- raw_data %>%
   spread(SearchedJourneyLeadDays, SearchedJourneyLeadDays_count)
 # convert NA to zero for running correlations
 raw_data[,4:ncol(raw_data)][is.na(raw_data[,4:ncol(raw_data)])] <- 0
+coff_df_deepdive <- data.frame(cor(raw_data[,4:ncol(raw_data)], raw_data[c("flightSearches", "flightbookings")], use = "complete.obs"))
 
 
 
-
-
-summarize_if(is.na(), function(x) sum(!is.na(x)) )
-cor(raw_data$`126`, raw_data$`139`, use = "complete.obs")
+# export dataframes to csv
 write_csv(raw_data, "HVA_raw.csv")
 
+summarize_if(is.na(), function(x) sum(!is.na(x)) )
 raw_data <- raw_data %>%
   select(storefront, SearchedOriginCity, SearchedJourneyStartDate) %>%
   group_by(storefront) %>%
