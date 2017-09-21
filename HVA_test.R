@@ -2,16 +2,54 @@ library(sqldf)
 library(tidyverse)
 library(lubridate)
 library(reshape2)
+library(bigrquery)
 
-raw_data1 <- read.csv(file="CD_table_sample.csv",head=TRUE,sep=",")
-
-
+# raw_data1 <- read.csv(file="CD_table_sample.csv",head=TRUE,sep=",")
+# raw_data1 <- read.csv(file="HVA_raw.csv",head=TRUE,sep=",")
+sourcefile <- load("HVA_raw_rdata.RData")
 raw_data1$flightSearches <- as.numeric(as.character(raw_data1$flightSearches))
 raw_data1$flightbookings <- as.numeric(as.character(raw_data1$flightbookings))
 
+# Big Query Setting
+project <- "airnz-ga-bigquery"
+dataset <- "hva_analysis"
+
+sql <- paste0("SELECT
+sid,
+yyyymmdd,
+ecommerceevents,
+chatbotEvents,
+mastheadEvents,
+CTAEvents,
+scrolldepthEvents,
+footermenuEvents,
+youtubeEvents,
+loyalty,
+Loyalty_new,
+videoEvents,
+NebulaCXEvents,
+flightbookingEvents,
+socialmediashares,
+airnzhotels,
+farefinder,
+signin,
+homepagetabpanel,
+appsdownload,
+dealpages,
+dealNavigation,
+formfield,
+flightSearches,
+flightbookings
+FROM
+[airnz-ga-bigquery:hva_analysis.event_base_table]
+WHERE yyyymmdd = '2017-01-25'
+")
+
+raw_data1 <- query_exec(sql, project = project, destination_table = NULL, max_pages = Inf)
+
 # performs count of eventCategory and flightsearch/flightbooking grouped by month
 raw_data <- raw_data1 %>%
-  select(-X) %>%
+  #select(-X) %>%
   mutate(Date = ymd(yyyymmdd)) %>%
   mutate(Year = year(Date)) %>%
   mutate(Month = month(Date, label = TRUE)) %>%
@@ -22,13 +60,13 @@ raw_data <- raw_data1 %>%
   #mutate(flightSearches = ifelse(is.na(flightSearches),0,flightSearches)) %>%
   #mutate(flightbookings = ifelse(is.na(flightbookings),0,flightbookings))
 
-raw_data[,5:32] <- lapply(raw_data[, 5:32], gsub, pattern = "null", replacement = NA, fixed = TRUE)
-raw_data[,5:32][!is.na(raw_data[,5:32])] <- 1
-raw_data[,5:34][is.na(raw_data[,5:34])] <- 0
-raw_data[,5:34] <- sapply( raw_data[,5:34], as.numeric )
+raw_data[,3:23] <- lapply(raw_data[, 3:23], gsub, pattern = "null", replacement = NA, fixed = TRUE)
+raw_data[,3:23][!is.na(raw_data[,3:23])] <- 1
+raw_data[,3:25][is.na(raw_data[,3:25])] <- 0
+raw_data[,3:25] <- sapply( raw_data[,3:25], as.numeric )
 
 # compute correlation: event category vs flightsearches/bookings
-coff_df <- data.frame(cor(raw_data[,5:32], raw_data[c("flightSearches", "flightbookings")], use = "complete.obs"))
+coff_df <- data.frame(cor(raw_data[,5:6], raw_data[c("flightSearches", "flightbookings")], use = "everything"))
 
 # group by month, summary count of event category
 raw_data <- raw_data %>%
@@ -87,7 +125,8 @@ coff_df_deepdive <- data.frame(cor(raw_data[,4:ncol(raw_data)], raw_data[c("flig
 
 
 # export dataframes to csv
-write_csv(raw_data, "HVA_raw.csv")
+write_csv(raw_data1, "HVA_raw.csv")
+save(raw_data1, file = "HVA_raw_rdata.RData")
 
 summarize_if(is.na(), function(x) sum(!is.na(x)) )
 raw_data <- raw_data %>%
