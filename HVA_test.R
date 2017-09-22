@@ -67,6 +67,7 @@ raw_data[,3:25] <- sapply( raw_data[,3:25], as.numeric )
 
 # compute correlation: event category vs flightsearches/bookings
 coff_df <- data.frame(cor(raw_data[,5:6], raw_data[c("flightSearches", "flightbookings")], use = "everything"))
+coff_df <- data.frame(names = row.names(coff_df), coff_df)
 
 # group by month, summary count of event category
 raw_data <- raw_data %>%
