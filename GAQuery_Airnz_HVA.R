@@ -29,8 +29,17 @@ endDate2 <- "2017-09-01"
 sourcefile <- load("GAevents_list_airnz.RData")
 events_list_airnz1 <- google_analytics_4(id, date_range = c(startDate, endDate), 
                                               metrics = c("sessions", "hits", "pageViews"), 
-                                              dimensions = c("date", "EventCategory", "EventAction"),
+                                              dimensions = c("yearMonth", "dimension11"),
                                         anti_sample = TRUE)
+
+
+events_list_airnz2 <- events_list_airnz1 %>%
+  group_by(yearMonth) %>%
+  summarize(searchorigincity_hits = sum(hits))
+
+# export dataframes to csv
+write_csv(events_list_airnz1, "events_list_airnz1.csv")
+save(events_list_airnz, file = "GAevents_list_airnz.RData")
 
 events_list_airnz1 <- events_list_airnz %>%
   #filter(grepl("2016|2017", yearMonth, ignore.case = TRUE))
@@ -39,15 +48,6 @@ events_list_airnz1 <- events_list_airnz %>%
   mutate(Month = month(Date, label = TRUE)) %>%
   mutate(yearMonth = paste(Year,Month, sep = "-")) %>%
   select(-date, -Year, -Month, -sessions, -pageViews) %>%
-  group_by(Date, yearMonth, EventCategory, EventAction) %>%
+  group_by(Date, yearMonth, EventCategory, EventAction)
   #filter(grepl("ecommerce|chatbot|mast head|cta|Scroll Depth|footer menu|youtube|loyalty|videoNebulaCX|flight booking|social|airnz|fare finder|sign in|tab panel|apps download|deal pages|navigation|form field", 
   #             EventCategory, ignore.case = TRUE))
-
-  
-  
-
-# export dataframes to csv
-write_csv(events_list_airnz1, "events_list_airnz1.csv")
-save(events_list_airnz, file = "GAevents_list_airnz.RData")
-
-
