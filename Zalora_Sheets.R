@@ -25,6 +25,7 @@ seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 startDate <- "2017-09-10"
 endDate <- "2017-09-30"
 
+#HK
 HDILA_Table_HK <- google_analytics_4(id_hk, date_range = c(startDate, endDate), 
                                          metrics = c("sessions", "transactions", "itemRevenue"), 
                                          dimensions = c("deviceCategory"),
@@ -37,10 +38,93 @@ HDILA_Table_HK <- HDILA_Table_HK %>%
   group_by(Property, segment) %>%
   summarize(Sessions = sum(sessions), 
             Transactions = sum(transactions),
-            Revenue = sum(itemRevenue))
+            Revenue = sum(itemRevenue)) %>%
+  arrange(desc(segment))
+# Indo
+HDILA_Table_Indo <- google_analytics_4(id_indo, date_range = c(startDate, endDate), 
+                                     metrics = c("sessions", "transactions", "itemRevenue"), 
+                                     dimensions = c("deviceCategory"),
+                                     segments = c(seg_HDILA, seg_allUsers),
+                                     anti_sample = TRUE)
 
+HDILA_Table_Indo <- HDILA_Table_Indo %>%
+  mutate(Property = "Indo") %>%
+  select(6, 2:5) %>%
+  group_by(Property, segment) %>%
+  summarize(Sessions = sum(sessions), 
+            Transactions = sum(transactions),
+            Revenue = sum(itemRevenue)) %>%
+  arrange(desc(segment))
 
-df <- rbind(HDILA_Table_HK, df2, df3, df4, df5)
+# MY
+HDILA_Table_MY <- google_analytics_4(id_my, date_range = c(startDate, endDate), 
+                                     metrics = c("sessions", "transactions", "itemRevenue"), 
+                                     dimensions = c("deviceCategory"),
+                                     segments = c(seg_HDILA, seg_allUsers),
+                                     anti_sample = TRUE)
+
+HDILA_Table_MY <- HDILA_Table_MY %>%
+  mutate(Property = "MY") %>%
+  select(6, 2:5) %>%
+  group_by(Property, segment) %>%
+  summarize(Sessions = sum(sessions), 
+            Transactions = sum(transactions),
+            Revenue = sum(itemRevenue)) %>%
+  arrange(desc(segment))
+# PH
+HDILA_Table_PH <- google_analytics_4(id_ph, date_range = c(startDate, endDate), 
+                                     metrics = c("sessions", "transactions", "itemRevenue"), 
+                                     dimensions = c("deviceCategory"),
+                                     segments = c(seg_HDILA, seg_allUsers),
+                                     anti_sample = TRUE)
+
+HDILA_Table_PH <- HDILA_Table_PH %>%
+  mutate(Property = "PH") %>%
+  select(6, 2:5) %>%
+  group_by(Property, segment) %>%
+  summarize(Sessions = sum(sessions), 
+            Transactions = sum(transactions),
+            Revenue = sum(itemRevenue)) %>%
+  arrange(desc(segment))
+
+# SG
+HDILA_Table_SG <- google_analytics_4(id_sg, date_range = c(startDate, endDate), 
+                                     metrics = c("sessions", "transactions", "itemRevenue"), 
+                                     dimensions = c("deviceCategory"),
+                                     segments = c(seg_HDILA, seg_allUsers),
+                                     anti_sample = TRUE)
+
+HDILA_Table_SG <- HDILA_Table_SG %>%
+  mutate(Property = "SG") %>%
+  select(6, 2:5) %>%
+  group_by(Property, segment) %>%
+  summarize(Sessions = sum(sessions), 
+            Transactions = sum(transactions),
+            Revenue = sum(itemRevenue)) %>%
+  arrange(desc(segment))
+
+# TW
+HDILA_Table_TW <- google_analytics_4(id_tw, date_range = c(startDate, endDate), 
+                                     metrics = c("sessions", "transactions", "itemRevenue"), 
+                                     dimensions = c("deviceCategory"),
+                                     segments = c(seg_HDILA, seg_allUsers),
+                                     anti_sample = TRUE)
+
+HDILA_Table_TW <- HDILA_Table_TW %>%
+  mutate(Property = "TW") %>%
+  select(6, 2:5) %>%
+  group_by(Property, segment) %>%
+  summarize(Sessions = sum(sessions), 
+            Transactions = sum(transactions),
+            Revenue = sum(itemRevenue)) %>%
+  arrange(desc(segment))
+
+Merged_Countries <- rbind(HDILA_Table_HK,
+                          HDILA_Table_Indo,
+                          HDILA_Table_MY,
+                          HDILA_Table_PH,
+                          HDILA_Table_SG,
+                          HDILA_Table_TW)
 
 
 
