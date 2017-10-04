@@ -70,8 +70,12 @@ for (i in id_combined) {
 }
 
 ga_SKU_data_merged <- ga_SKU_data_merged %>%
-  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId"))
+  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
+  mutate(adContent2 = adContent) %>%
+  separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge")
 
-
-
-
+# get video/product dict
+zalora_Product_worksheet <- gs_title("zalora products_till_week5.csv")
+gs_ws_ls(zalora_Product_worksheet)
+video_dict <- gs_read(ss=zalora_Product_worksheet, ws = "Videoname_type_dictionary")
+video_dict <- as.data.frame(video_dict)
