@@ -43,7 +43,6 @@ for (i in id_combined) {
   ga_data_merged <- rbind(ga_data_merged, ga_data_temp)
 }
 
-
 ga_data_merged <- ga_data_merged %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   group_by(viewName, segment) %>%
@@ -52,15 +51,26 @@ ga_data_merged <- ga_data_merged %>%
             Revenue = sum(itemRevenue)) %>%
   arrange(desc(viewName, segment))
 
+
 # SKU/product report
-SKU_Table_HK <- google_analytics_4(id_hk, date_range = c(startDate, endDate), 
-                                     metrics = c("itemsPerPurchase", "itemRevenue"), 
-                                     dimensions = c("date", "userType", "source", "medium", "transactionId", "adContent", "productSku"),
-                                     segments = c(seg_allUsers),
-                                   filtersExpression = c("ga:campaign=~TheTake"),
-                                     anti_sample = TRUE)
+ga_SKU_data_merged <- data.frame()
 
+for (i in id_combined) {
+  ga_data_temp <- 
+    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("itemsPerPurchase", "itemRevenue"), 
+                       dimensions = c("date", "userType", "source", "medium", "transactionId", "adContent", "productSku"),
+                       segments = c(seg_allUsers),
+                       filtersExpression = c("ga:campaign=~TheTake"),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp$id_combined <- i
+  ga_SKU_data_merged <- rbind(ga_SKU_data_merged, ga_data_temp)
+}
 
+ga_SKU_data_merged <- ga_SKU_data_merged %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId"))
 
 
 
