@@ -103,7 +103,7 @@ for (i in id_combined) {
   ga_data_temp2 <- 
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
-                       metrics = c("sessions", "pageViews"), 
+                       metrics = c("sessions", "users"), 
                        dimensions = c("deviceCategory", "source","medium", "channelGrouping"),
                        segments = c(seg_allUsers),
                        anti_sample = TRUE,
@@ -112,22 +112,53 @@ for (i in id_combined) {
   ga_data_merged_topFunnel <- rbind(ga_data_merged_topFunnel, ga_data_temp2)
 }
 
+patterns <- c("Email", "Organic", 
+  "Retargeting", "Affiliate", 
+  "cpc", "Onsite", "Referring Source - Diva")
+
 ga_data_merged_topFunnel <- ga_data_merged_topFunnel %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
-  group_by(viewName, source, medium, channelGrouping, segment) %>%
-  summarize(Sessions = sum(sessions), 
-            Pageviews = sum(pageViews)) %>%
-  arrange(desc(viewName, segment)) %>%
+  select(-id_combined, -segment) %>%
   mutate(clean1 = case_when(source == '(direct)' ~ "Onsite",
                             source == 'Affiliate' ~ "Affiliate",
+                            grepl('diva, ', source, ignore.case = TRUE) ~"Referring Source - Diva",
                             TRUE ~ medium)) %>%
   mutate(clean2 = case_when(channelGrouping == 'Social' ~ "Social",
-                            TRUE ~ clean1))
+                            TRUE ~ clean1)) %>%
+  filter(grepl(paste(patterns, collapse = "|"),clean2, ignore.case = TRUE))
+ 
+
+ga_data_merged_topFunnel_sessions <- ga_data_merged_topFunnel %>%
+  select(deviceCategory, sessions, clean2)
+
+ga_data_merged_topFunnel_sessions <- ga_data_merged_topFunnel_sessions %>%
+  mutate(row = 1:nrow(ga_data_merged_topFunnel_sessions)) %>%
+  spread(clean2, sessions) %>%
+  group_by(deviceCategory) %>%
+  summarize_all(sum, na.rm = TRUE) %>%
+  mutate(type = "sessions") %>%
+  rowwise() %>%
+  mutate(Email = sum(email, Email),
+         Retargeting = sum(retargeting, Retargeting)) %>%
+  select(1, 12,6,8,11,3,4,7,9)
+
+ga_data_merged_topFunnel_users <- ga_data_merged_topFunnel %>%
+  select(deviceCategory, users, clean2)
+
+ga_data_merged_topFunnel_users <- ga_data_merged_topFunnel_users %>%
+  mutate(row = 1:nrow(ga_data_merged_topFunnel_users)) %>%
+  spread(clean2, users) %>%
+  group_by(deviceCategory) %>%
+  summarize_all(sum, na.rm = TRUE) %>%
+  mutate(type = "users") %>%
+  rowwise() %>%
+  mutate(Email = sum(email, Email),
+         Retargeting = sum(retargeting, Retargeting)) %>%
+  select(1, 12,6,8,11,3,4,7,9)
+
+ga_data_merged_topFunnel_users_Sessions <- rbind(ga_data_merged_topFunnel_users, ga_data_merged_topFunnel_sessions)
 write_csv(ga_data_merged_topFunnel, "funnel_wkX.csv")
 
-ga_data_merged_topFunnel_sum <- ga_data_merged_topFunnel %>%
-  filter(clean1 == 'cpc' && viewName == 'SG Rollup ZALORA | The Take (sgrt)') 
-sum(ga_data_merged_topFunnel_sum$Sessions)
 
 # get video/product dict
 zalora_Product_worksheet <- gs_title("zalora products_till_week5.csv")
