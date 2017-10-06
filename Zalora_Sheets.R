@@ -25,8 +25,8 @@ seg_HDILA <- segment_ga4("HDILA", segment_id = HDILASegment)
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
-startDate <- "2017-09-11"
-endDate <- "2017-09-17"
+startDate <- "2017-09-18"
+endDate <- "2017-09-24"
 
 ga_data_merged <- data.frame()
 
@@ -104,7 +104,7 @@ for (i in id_combined) {
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("sessions", "pageViews"), 
-                       dimensions = c("source","medium", "channelGrouping"),
+                       dimensions = c("deviceCategory", "source","medium", "channelGrouping"),
                        segments = c(seg_allUsers),
                        anti_sample = TRUE,
                        max = -1)
@@ -117,10 +117,17 @@ ga_data_merged_topFunnel <- ga_data_merged_topFunnel %>%
   group_by(viewName, source, medium, channelGrouping, segment) %>%
   summarize(Sessions = sum(sessions), 
             Pageviews = sum(pageViews)) %>%
-  arrange(desc(viewName, segment))
-write_csv(ga_data_merged_topFunnel, "funnel_wk2.csv")
+  arrange(desc(viewName, segment)) %>%
+  mutate(clean1 = case_when(source == '(direct)' ~ "Onsite",
+                            source == 'Affiliate' ~ "Affiliate",
+                            TRUE ~ medium)) %>%
+  mutate(clean2 = case_when(channelGrouping == 'Social' ~ "Social",
+                            TRUE ~ clean1))
+write_csv(ga_data_merged_topFunnel, "funnel_wkX.csv")
 
-
+ga_data_merged_topFunnel_sum <- ga_data_merged_topFunnel %>%
+  filter(clean1 == 'cpc' && viewName == 'SG Rollup ZALORA | The Take (sgrt)') 
+sum(ga_data_merged_topFunnel_sum$Sessions)
 
 # get video/product dict
 zalora_Product_worksheet <- gs_title("zalora products_till_week5.csv")
