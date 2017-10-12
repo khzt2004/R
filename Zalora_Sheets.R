@@ -8,12 +8,12 @@ library(reshape2)
 ga_auth(new_user = TRUE)
 ## get your accounts
 account_list <- ga_account_list()
-id_hk <- account_list[210,'viewId']
-id_indo <- account_list[211,'viewId']
-id_my <- account_list[212,'viewId']
-id_ph <- account_list[213,'viewId']
-id_sg <- account_list[214,'viewId']
-id_tw <- account_list[215,'viewId']
+id_hk <- account_list[218,'viewId']
+id_indo <- account_list[234,'viewId']
+id_my <- account_list[249,'viewId']
+id_ph <- account_list[265,'viewId']
+id_sg <- account_list[280,'viewId']
+id_tw <- account_list[299,'viewId']
 
 id_combined <- c(id_hk,id_indo, id_my, id_ph, id_sg, id_tw)
 
@@ -25,8 +25,8 @@ seg_HDILA <- segment_ga4("HDILA", segment_id = HDILASegment)
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
-startDate <- "2017-09-18"
-endDate <- "2017-09-24"
+startDate <- "2017-10-02"
+endDate <- "2017-10-08"
 
 ga_data_merged <- data.frame()
 
@@ -159,6 +159,28 @@ ga_data_merged_topFunnel_users <- ga_data_merged_topFunnel_users %>%
 ga_data_merged_topFunnel_users_Sessions <- rbind(ga_data_merged_topFunnel_users, ga_data_merged_topFunnel_sessions)
 write_csv(ga_data_merged_topFunnel, "funnel_wkX.csv")
 
+# purchase metrics report
+product_sg <- google_analytics_4(id_sg, #=This is a (dynamic) ViewID parameter
+                                 date_range = c(startDate, endDate), 
+                                 metrics = c("itemRevenue"), 
+                                 dimensions = c("deviceCategory", "userType", "adContent", "productSku", "transactionId"),
+                                 segments = c(seg_allUsers), # change segment as needed
+                                 anti_sample = TRUE,
+                                 max = -1)
+
+pdt_sg_desktop <- filter(product_sg, deviceCategory == "desktop") 
+sum(pdt_sg_desktop$itemRevenue)
+filter(product_sg, deviceCategory == "desktop") %>% distinct(transactionId)
+filter(product_sg, deviceCategory == "desktop") %>% distinct(productSku)
+desktop_count <- filter(product_sg, deviceCategory == "desktop") %>% count(productSku)
+filter(product_sg, deviceCategory == "desktop") %>% sum(itemRevenue)
+
+pdt_sg_tablet <- filter(product_sg, deviceCategory == "tablet") 
+sum(pdt_sg_tablet$itemRevenue)
+filter(product_sg, deviceCategory == "tablet") %>% distinct(transactionId)
+filter(product_sg, deviceCategory == "tablet") %>% distinct(productSku)
+tablet_count <- filter(product_sg, deviceCategory == "tablet") %>% count(productSku)
+filter(product_sg, deviceCategory == "tablet") %>% sum(itemRevenue)
 
 # get video/product dict
 zalora_Product_worksheet <- gs_title("zalora products_till_week5.csv")
