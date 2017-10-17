@@ -28,8 +28,8 @@ seg_TheTake <- segment_ga4("TheTake", segment_id = TheTakeSegment)
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
-startDate <- "2017-09-25"
-endDate <- "2017-10-01"
+startDate <- "2017-09-08"
+endDate <- "2017-10-08"
 
 # Traffic Report
 ga_data_merged <- data.frame()
@@ -49,7 +49,29 @@ for (i in id_combined) {
 
 ga_data_merged <- ga_data_merged %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
-  gather("Metric", "value", 5:6)
+  mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
+                           grepl("ID", viewName, ignore.case = TRUE) ~"ID",
+                           grepl("SG", viewName, ignore.case = TRUE) ~"SG",
+                           grepl("MY", viewName, ignore.case = TRUE) ~"MY",
+                           grepl("PH", viewName, ignore.case = TRUE) ~"PH",
+                           grepl("TW", viewName, ignore.case = TRUE) ~"TW"),
+         date = ymd(date)) %>%
+  mutate(Week = case_when(date >= '2017-09-08' & date <= '2017-09-10' ~ "Week 1",
+                          date >= '2017-09-11' & date <= '2017-09-17' ~ "Week 2",
+                          date >= '2017-09-18' & date <= '2017-09-24' ~ "Week 3",
+                          date >= '2017-09-25' & date <= '2017-10-01' ~ "Week 4",
+                          date >= '2017-10-02' & date <= '2017-10-08' ~ "Week 5",
+                          date >= '2017-10-09' & date <= '2017-10-15' ~ "Week 6",
+                          date >= '2017-10-16' & date <= '2017-10-22' ~ "Week 7",
+                          date >= '2017-10-23' & date <= '2017-10-29' ~ "Week 8",
+                          date >= '2017-10-30' & date <= '2017-11-05' ~ "Week 9",
+                          date >= '2017-11-06' & date <= '2017-11-12' ~ "Week 10",
+                          date >= '2017-11-13' & date <= '2017-11-19' ~ "Week 11",
+                          date >= '2017-11-20' & date <= '2017-11-26' ~ "Week 12",
+                          date >= '2017-11-27' & date <= '2017-12-03' ~ "Week 13",
+                          date >= '2017-12-04' & date <= '2017-12-10' ~ "Week 14",
+                          date >= '2017-12-11' & date <= '2017-12-17' ~ "Week 15"
+                          ))
 
 
 # Clicked Add to Cart report
@@ -73,7 +95,30 @@ ga_addCart_data_merged <- ga_addCart_data_merged %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   filter(campaign == 'TheTake') %>%
   mutate(adContent2 = adContent) %>%
-  separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge") 
+  separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge") %>%
+  mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
+                             grepl("ID", viewName, ignore.case = TRUE) ~"ID",
+                             grepl("SG", viewName, ignore.case = TRUE) ~"SG",
+                             grepl("MY", viewName, ignore.case = TRUE) ~"MY",
+                             grepl("PH", viewName, ignore.case = TRUE) ~"PH",
+                             grepl("TW", viewName, ignore.case = TRUE) ~"TW"),
+         date = ymd(date)) %>%
+  mutate(Week = case_when(date >= '2017-09-08' & date <= '2017-09-10' ~ "Week 1",
+                          date >= '2017-09-11' & date <= '2017-09-17' ~ "Week 2",
+                          date >= '2017-09-18' & date <= '2017-09-24' ~ "Week 3",
+                          date >= '2017-09-25' & date <= '2017-10-01' ~ "Week 4",
+                          date >= '2017-10-02' & date <= '2017-10-08' ~ "Week 5",
+                          date >= '2017-10-09' & date <= '2017-10-15' ~ "Week 6",
+                          date >= '2017-10-16' & date <= '2017-10-22' ~ "Week 7",
+                          date >= '2017-10-23' & date <= '2017-10-29' ~ "Week 8",
+                          date >= '2017-10-30' & date <= '2017-11-05' ~ "Week 9",
+                          date >= '2017-11-06' & date <= '2017-11-12' ~ "Week 10",
+                          date >= '2017-11-13' & date <= '2017-11-19' ~ "Week 11",
+                          date >= '2017-11-20' & date <= '2017-11-26' ~ "Week 12",
+                          date >= '2017-11-27' & date <= '2017-12-03' ~ "Week 13",
+                          date >= '2017-12-04' & date <= '2017-12-10' ~ "Week 14",
+                          date >= '2017-12-11' & date <= '2017-12-17' ~ "Week 15"
+  ))
 
 #Completed purchase report
 ga_data_completedpurchase <- data.frame()
@@ -94,9 +139,32 @@ for (i in id_combined) {
 ga_data_completedpurchase <- ga_data_completedpurchase %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   mutate(adContent2 = adContent) %>%
-  separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge")
+  separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge") %>%
+  mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
+                             grepl("ID", viewName, ignore.case = TRUE) ~"ID",
+                             grepl("SG", viewName, ignore.case = TRUE) ~"SG",
+                             grepl("MY", viewName, ignore.case = TRUE) ~"MY",
+                             grepl("PH", viewName, ignore.case = TRUE) ~"PH",
+                             grepl("TW", viewName, ignore.case = TRUE) ~"TW"),
+         date = ymd(date)) %>%
+  mutate(Week = case_when(date >= '2017-09-08' & date <= '2017-09-10' ~ "Week 1",
+                          date >= '2017-09-11' & date <= '2017-09-17' ~ "Week 2",
+                          date >= '2017-09-18' & date <= '2017-09-24' ~ "Week 3",
+                          date >= '2017-09-25' & date <= '2017-10-01' ~ "Week 4",
+                          date >= '2017-10-02' & date <= '2017-10-08' ~ "Week 5",
+                          date >= '2017-10-09' & date <= '2017-10-15' ~ "Week 6",
+                          date >= '2017-10-16' & date <= '2017-10-22' ~ "Week 7",
+                          date >= '2017-10-23' & date <= '2017-10-29' ~ "Week 8",
+                          date >= '2017-10-30' & date <= '2017-11-05' ~ "Week 9",
+                          date >= '2017-11-06' & date <= '2017-11-12' ~ "Week 10",
+                          date >= '2017-11-13' & date <= '2017-11-19' ~ "Week 11",
+                          date >= '2017-11-20' & date <= '2017-11-26' ~ "Week 12",
+                          date >= '2017-11-27' & date <= '2017-12-03' ~ "Week 13",
+                          date >= '2017-12-04' & date <= '2017-12-10' ~ "Week 14",
+                          date >= '2017-12-11' & date <= '2017-12-17' ~ "Week 15"
+  ))
 
-write_csv(ga_addCart_data_merged, "wk4_add_cart.csv")
+write_csv(ga_data_completedpurchase, "allweeks_purchase.csv")
 
 # top of funnel report
 ga_data_merged_topFunnel <- data.frame()
