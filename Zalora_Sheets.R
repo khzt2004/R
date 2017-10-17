@@ -8,35 +8,39 @@ library(reshape2)
 ga_auth(new_user = TRUE)
 ## get your accounts
 account_list <- ga_account_list()
-id_hk <- account_list[218,'viewId']
-id_indo <- account_list[234,'viewId']
-id_my <- account_list[249,'viewId']
-id_ph <- account_list[265,'viewId']
-id_sg <- account_list[280,'viewId']
-id_tw <- account_list[299,'viewId']
+id_hk <- account_list[64,'viewId']
+id_indo <- account_list[65,'viewId']
+id_my <- account_list[66,'viewId']
+id_ph <- account_list[67,'viewId']
+id_sg <- account_list[68,'viewId']
+id_tw <- account_list[69,'viewId']
 
 id_combined <- c(id_hk,id_indo, id_my, id_ph, id_sg, id_tw)
 
 #my_segments <- ga_segment_list()
 #segs <- my_segments$items
-HDILASegment <- "gaid::1NZ_PZZyRnmbDSnrQ6-dgA"
+HDILASegment <- "gaid::2GZ0l6p8Rf62KRGjWCu-ZQ"
 seg_HDILA <- segment_ga4("HDILA", segment_id = HDILASegment)
+
+TheTakeSegment <- "gaid::YLukq_szSomvU98L557Esw"
+seg_TheTake <- segment_ga4("TheTake", segment_id = TheTakeSegment)
 
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
-startDate <- "2017-10-02"
-endDate <- "2017-10-08"
+startDate <- "2017-09-25"
+endDate <- "2017-10-01"
 
+# Traffic Report
 ga_data_merged <- data.frame()
 
 for (i in id_combined) {
   ga_data_temp <- 
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
-                       metrics = c("sessions", "transactions", "itemRevenue"), 
-                       dimensions = c("deviceCategory"),
-                       segments = c(seg_HDILA, seg_allUsers),
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "sourceMedium", "date"),
+                       segments = c(seg_allUsers),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp$id_combined <- i
@@ -45,56 +49,54 @@ for (i in id_combined) {
 
 ga_data_merged <- ga_data_merged %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
-  group_by(viewName, segment) %>%
-  summarize(Sessions = sum(sessions), 
-            Transactions = sum(transactions),
-            Revenue = sum(itemRevenue)) %>%
-  arrange(desc(viewName, segment))
+  gather("Metric", "value", 5:6)
 
 
-# SKU/product report
-ga_SKU_data_merged <- data.frame()
+# Clicked Add to Cart report
+ga_addCart_data_merged <- data.frame()
+
+for (i in id_combined) {
+  ga_data_temp1 <- 
+    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions"), 
+                       dimensions = c("deviceCategory", "sourceMedium", "date", "adContent", "campaign", "shoppingStage"),
+                       segments = c(seg_allUsers),
+                       filtersExpression = "ga:shoppingStage==ADD_TO_CART",
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp1$id_combined <- i
+  ga_addCart_data_merged <- rbind(ga_addCart_data_merged, ga_data_temp1)
+}
+
+ga_addCart_data_merged <- ga_addCart_data_merged %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
+  filter(campaign == 'TheTake') %>%
+  mutate(adContent2 = adContent) %>%
+  separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge") 
+
+#Completed purchase report
+ga_data_completedpurchase <- data.frame()
 
 for (i in id_combined) {
   ga_data_temp1 <- 
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("itemRevenue"), 
-                       dimensions = c("deviceCategory"),
+                       dimensions = c("transactionId", "deviceCategory", "sourceMedium", "date", "adContent", "campaign", "productSKU", "userType"),
                        segments = c(seg_allUsers),
-                       filtersExpression = c("ga:campaign=~TheTake"),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp1$id_combined <- i
-  ga_SKU_data_merged <- rbind(ga_SKU_data_merged, ga_data_temp1)
+  ga_data_completedpurchase <- rbind(ga_data_completedpurchase, ga_data_temp1)
 }
 
-ga_SKU_data_merged <- ga_SKU_data_merged %>%
+ga_data_completedpurchase <- ga_data_completedpurchase %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   mutate(adContent2 = adContent) %>%
   separate(adContent2, c("ad_product", "ad_SKU", "video_title"), "_", extra = "merge")
 
-#sales report
-ga_data_sales_merged <- data.frame()
-
-for (i in id_combined) {
-  ga_data_temp1 <- 
-    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
-                       date_range = c(startDate, endDate), 
-                       metrics = c("itemRevenue"), 
-                       dimensions = c("deviceCategory"),
-                       segments = c(seg_HDILA),
-                       anti_sample = TRUE,
-                       max = -1)
-  ga_data_temp1$id_combined <- i
-  ga_data_sales_merged <- rbind(ga_data_sales_merged, ga_data_temp1)
-}
-
-ga_data_sales_merged <- ga_data_sales_merged %>%
-  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
-  group_by(viewName, segment) %>%
-  summarize(Revenue = sum(itemRevenue)) %>%
-  arrange(desc(viewName, segment))
+write_csv(ga_addCart_data_merged, "wk4_add_cart.csv")
 
 # top of funnel report
 ga_data_merged_topFunnel <- data.frame()
