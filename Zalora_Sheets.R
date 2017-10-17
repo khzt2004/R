@@ -39,7 +39,7 @@ for (i in id_combined) {
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("sessions", "users"), 
-                       dimensions = c("deviceCategory", "sourceMedium", "date"),
+                       dimensions = c("deviceCategory", "sourceMedium", "date", "campaign"),
                        segments = c(seg_allUsers),
                        anti_sample = TRUE,
                        max = -1)
