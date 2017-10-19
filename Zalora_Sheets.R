@@ -28,8 +28,8 @@ seg_TheTake <- segment_ga4("TheTake", segment_id = TheTakeSegment)
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
-startDate <- "2017-09-08"
-endDate <- "2017-10-08"
+startDate <- "2017-10-09"
+endDate <- "2017-10-15"
 
 # Traffic Report
 ga_data_merged <- data.frame()
@@ -73,6 +73,7 @@ ga_data_merged <- ga_data_merged %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
                           ))
 
+write_csv(ga_data_merged, "traffic_wk5.csv")
 
 # Clicked Add to Cart report
 ga_addCart_data_merged <- data.frame()
@@ -120,6 +121,8 @@ ga_addCart_data_merged <- ga_addCart_data_merged %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
+write_csv(ga_addCart_data_merged, "addcart_wk5.csv")
+
 #Completed purchase report
 ga_data_completedpurchase <- data.frame()
 
@@ -164,7 +167,7 @@ ga_data_completedpurchase <- ga_data_completedpurchase %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
-write_csv(ga_data_completedpurchase, "allweeks_purchase.csv")
+write_csv(ga_data_completedpurchase, "week5_purchase.csv")
 
 # top of funnel report
 ga_data_merged_topFunnel <- data.frame()
