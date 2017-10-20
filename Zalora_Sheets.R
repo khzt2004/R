@@ -8,12 +8,19 @@ library(reshape2)
 ga_auth(new_user = TRUE)
 ## get your accounts
 account_list <- ga_account_list()
-id_hk <- account_list[64,'viewId']
-id_indo <- account_list[65,'viewId']
-id_my <- account_list[66,'viewId']
-id_ph <- account_list[67,'viewId']
-id_sg <- account_list[68,'viewId']
-id_tw <- account_list[69,'viewId']
+#id_hk <- account_list[64,'viewId']
+#id_indo <- account_list[65,'viewId']
+#id_my <- account_list[66,'viewId']
+#id_ph <- account_list[67,'viewId']
+#id_sg <- account_list[68,'viewId']
+#id_tw <- account_list[69,'viewId']
+
+id_hk <- account_list$viewId[account_list$viewName=='HK Rollup ZALORA | The Take (hkrt)']
+id_indo <- account_list$viewId[account_list$viewName=='ID Rollup ZALORA | The Take (idrt)']
+id_my <- account_list$viewId[account_list$viewName=='MY Rollup ZALORA | The Take (myrt)']
+id_ph <- account_list$viewId[account_list$viewName=='PH Rollup ZALORA | The Take (phrt)']
+id_sg <- account_list$viewId[account_list$viewName=='SG Rollup ZALORA | The Take (sgrt)']
+id_tw <- account_list$viewId[account_list$viewName=='TW Rollup ZALORA | The Take (twrt)']
 
 id_combined <- c(id_hk,id_indo, id_my, id_ph, id_sg, id_tw)
 
@@ -28,11 +35,12 @@ seg_TheTake <- segment_ga4("TheTake", segment_id = TheTakeSegment)
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
+# enter start date and end date here. Format: yyyy-mm-dd
 startDate <- "2017-10-09"
 endDate <- "2017-10-15"
 
 # Traffic Report
-ga_data_merged <- data.frame()
+ga_traffic_data_merged <- data.frame()
 
 for (i in id_combined) {
   ga_data_temp <- 
@@ -44,10 +52,10 @@ for (i in id_combined) {
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp$id_combined <- i
-  ga_data_merged <- rbind(ga_data_merged, ga_data_temp)
+  ga_traffic_data_merged <- rbind(ga_traffic_data_merged, ga_data_temp)
 }
 
-ga_data_merged <- ga_data_merged %>%
+ga_traffic_data_merged <- ga_traffic_data_merged %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
                            grepl("ID", viewName, ignore.case = TRUE) ~"ID",
@@ -73,7 +81,8 @@ ga_data_merged <- ga_data_merged %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
                           ))
 
-write_csv(ga_data_merged, "traffic_wk5.csv")
+# export dataframe as csv to your working directory
+write_csv(ga_traffic_data_merged, "traffic_wk5.csv")
 
 # Clicked Add to Cart report
 ga_addCart_data_merged <- data.frame()
@@ -121,6 +130,7 @@ ga_addCart_data_merged <- ga_addCart_data_merged %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
+# export dataframe as csv to your working directory
 write_csv(ga_addCart_data_merged, "addcart_wk5.csv")
 
 #Completed purchase report
@@ -167,9 +177,12 @@ ga_data_completedpurchase <- ga_data_completedpurchase %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
+# export dataframe as csv to your working directory
 write_csv(ga_data_completedpurchase, "week5_purchase.csv")
 
-# top of funnel report
+
+
+# top of funnel report - not required
 ga_data_merged_topFunnel <- data.frame()
 
 for (i in id_combined) {
@@ -230,35 +243,7 @@ ga_data_merged_topFunnel_users <- ga_data_merged_topFunnel_users %>%
   select(1, 12,6,8,11,3,4,7,9)
 
 ga_data_merged_topFunnel_users_Sessions <- rbind(ga_data_merged_topFunnel_users, ga_data_merged_topFunnel_sessions)
+
+# export csv to your working directory
 write_csv(ga_data_merged_topFunnel, "funnel_wkX.csv")
 
-# purchase metrics report
-product_sg <- google_analytics_4(id_sg, #=This is a (dynamic) ViewID parameter
-                                 date_range = c(startDate, endDate), 
-                                 metrics = c("itemRevenue"), 
-                                 dimensions = c("deviceCategory", "userType", "adContent", "productSku", "transactionId"),
-                                 segments = c(seg_allUsers), # change segment as needed
-                                 anti_sample = TRUE,
-                                 max = -1)
-
-pdt_sg_desktop <- filter(product_sg, deviceCategory == "desktop") 
-sum(pdt_sg_desktop$itemRevenue)
-filter(product_sg, deviceCategory == "desktop") %>% distinct(transactionId)
-filter(product_sg, deviceCategory == "desktop") %>% distinct(productSku)
-desktop_count <- filter(product_sg, deviceCategory == "desktop") %>% count(productSku)
-filter(product_sg, deviceCategory == "desktop") %>% sum(itemRevenue)
-
-pdt_sg_tablet <- filter(product_sg, deviceCategory == "tablet") 
-sum(pdt_sg_tablet$itemRevenue)
-filter(product_sg, deviceCategory == "tablet") %>% distinct(transactionId)
-filter(product_sg, deviceCategory == "tablet") %>% distinct(productSku)
-tablet_count <- filter(product_sg, deviceCategory == "tablet") %>% count(productSku)
-filter(product_sg, deviceCategory == "tablet") %>% sum(itemRevenue)
-
-# get video/product dict
-zalora_Product_worksheet <- gs_title("zalora products_till_week5.csv")
-gs_ws_ls(zalora_Product_worksheet)
-video_dict <- gs_read(ss=zalora_Product_worksheet, ws = "Videoname_type_dictionary")
-video_dict <- as.data.frame(video_dict)
-gs_ws <- gs_ws_new(zalora_Product_worksheet, ws_title = "adContent_product_sku separated")
-gs_edit_cells(zalora_Product_worksheet, ws="adContent_product_sku separated", input = ga_SKU_data_merged, trim = TRUE)
