@@ -24,6 +24,15 @@ id_tw <- account_list$viewId[account_list$viewName=='TW Rollup ZALORA | The Take
 
 id_combined <- c(id_hk,id_indo, id_my, id_ph, id_sg, id_tw)
 
+id_app_hk <- account_list$viewId[account_list$viewName=='HK App Live View (hkal)']
+id_app_indo <- account_list$viewId[account_list$viewName=='ID App Live View (idal)']
+id_app_my <- account_list$viewId[account_list$viewName=='MY App Live View (myal)']
+id_app_ph <- account_list$viewId[account_list$viewName=='PH App Live View (phal)']
+id_app_sg <- account_list$viewId[account_list$viewName=='SG App Live View (sgal)']
+id_app_tw <- account_list$viewId[account_list$viewName=='TW App Live View (twal)']
+
+id_app_combined <- c(id_app_hk,id_app_indo, id_app_my, id_app_ph, id_app_sg, id_app_tw)
+
 #my_segments <- ga_segment_list()
 #segs <- my_segments$items
 HDILASegment <- "gaid::2GZ0l6p8Rf62KRGjWCu-ZQ"
@@ -84,6 +93,52 @@ ga_traffic_data_merged <- ga_traffic_data_merged %>%
 # export dataframe as csv to your working directory
 write_csv(ga_traffic_data_merged, "traffic_wk5.csv")
 
+
+# App Traffic Report - ID data is sampled, why
+ga_app_traffic_data_merged <- data.frame()
+
+for (i in id_app_combined) {
+  ga_data_temp3 <- 
+    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "sourceMedium", "date", "campaign"),
+                       segments = c(seg_allUsers),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp3$id_combined <- i
+  ga_app_traffic_data_merged <- rbind(ga_app_traffic_data_merged, ga_data_temp3)
+}
+
+ga_app_traffic_data_merged <- ga_app_traffic_data_merged %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
+  mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
+                             grepl("ID", viewName, ignore.case = TRUE) ~"ID",
+                             grepl("SG", viewName, ignore.case = TRUE) ~"SG",
+                             grepl("MY", viewName, ignore.case = TRUE) ~"MY",
+                             grepl("PH", viewName, ignore.case = TRUE) ~"PH",
+                             grepl("TW", viewName, ignore.case = TRUE) ~"TW"),
+         date = ymd(date)) %>%
+  mutate(Week = case_when(date >= '2017-09-08' & date <= '2017-09-10' ~ "1",
+                          date >= '2017-09-11' & date <= '2017-09-17' ~ "2",
+                          date >= '2017-09-18' & date <= '2017-09-24' ~ "3",
+                          date >= '2017-09-25' & date <= '2017-10-01' ~ "4",
+                          date >= '2017-10-02' & date <= '2017-10-08' ~ "5",
+                          date >= '2017-10-09' & date <= '2017-10-15' ~ "6",
+                          date >= '2017-10-16' & date <= '2017-10-22' ~ "7",
+                          date >= '2017-10-23' & date <= '2017-10-29' ~ "8",
+                          date >= '2017-10-30' & date <= '2017-11-05' ~ "9",
+                          date >= '2017-11-06' & date <= '2017-11-12' ~ "10",
+                          date >= '2017-11-13' & date <= '2017-11-19' ~ "11",
+                          date >= '2017-11-20' & date <= '2017-11-26' ~ "12",
+                          date >= '2017-11-27' & date <= '2017-12-03' ~ "13",
+                          date >= '2017-12-04' & date <= '2017-12-10' ~ "14",
+                          date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
+  ))
+
+# export dataframe as csv to your working directory
+write_csv(ga_app_traffic_data_merged, "traffic_wk5.csv")
+
 # Clicked Add to Cart report
 ga_addCart_data_merged <- data.frame()
 
@@ -137,7 +192,7 @@ write_csv(ga_addCart_data_merged, "addcart_wk5.csv")
 ga_data_completedpurchase <- data.frame()
 
 for (i in id_combined) {
-  ga_data_temp1 <- 
+  ga_data_temp2 <- 
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("itemRevenue"), 
@@ -145,8 +200,8 @@ for (i in id_combined) {
                        segments = c(seg_allUsers),
                        anti_sample = TRUE,
                        max = -1)
-  ga_data_temp1$id_combined <- i
-  ga_data_completedpurchase <- rbind(ga_data_completedpurchase, ga_data_temp1)
+  ga_data_temp2$id_combined <- i
+  ga_data_completedpurchase <- rbind(ga_data_completedpurchase, ga_data_temp2)
 }
 
 ga_data_completedpurchase <- ga_data_completedpurchase %>%
