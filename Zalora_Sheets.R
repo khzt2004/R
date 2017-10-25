@@ -371,16 +371,16 @@ ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
-ga_data_app_completedpurchase1 <- ga_data_app_completedpurchase %>%
+ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
   select(Country, Week, deviceCategory, transactionId, productSKU, itemRevenue) %>%
+  mutate(productSKUCount = ifelse(productSKU!="", 1, 0)) %>%
   group_by(Country, Week, deviceCategory) %>%
-  rowwise() %>%
-  mutate(transactionCount = n_distinct(transactionId),
-         productSKUCount = count(productSKU),
-         revenueSum = sum(itemRevenue))
+  summarise(revenueSum = sum(itemRevenue),
+            productSKUCount = sum(productSKUCount),
+            transactionIdcount = n_distinct(transactionId))
+
 
 # export dataframe as csv to your working directory
 write_csv(ga_data_app_completedpurchase, "week7_app_purchase.csv")
-
 
 
