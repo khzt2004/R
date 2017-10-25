@@ -338,7 +338,7 @@ for (i in id_app_combined) {
     google_analytics_4(i, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("itemRevenue"), 
-                       dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                       dimensions = c("transactionId", "deviceCategory", "date", "productSKU", "landingScreenName"),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp5$id_combined <- i
@@ -371,7 +371,7 @@ ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
-ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
+ga_data_app_allcompletedpurchase <- ga_data_app_completedpurchase %>%
   select(Country, Week, deviceCategory, transactionId, productSKU, itemRevenue) %>%
   mutate(productSKUCount = ifelse(productSKU!="", 1, 0)) %>%
   group_by(Country, Week, deviceCategory) %>%
@@ -379,8 +379,17 @@ ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
             productSKUCount = sum(productSKUCount),
             transactionIdcount = n_distinct(transactionId))
 
+ga_data_app_HDILAcompletedpurchase <- ga_data_app_completedpurchase %>%
+  select(Country, Week, deviceCategory, transactionId, productSKU, itemRevenue, landingScreenName) %>%
+  filter(grepl("HDILA", landingScreenName, ignore.case = TRUE)) %>%
+  mutate(productSKUCount = ifelse(productSKU!="", 1, 0))
+  
+  #group_by(Country, Week, deviceCategory) %>%
+  #summarise(revenueSum = sum(itemRevenue),
+  #          productSKUCount = sum(productSKUCount),
+  #          transactionIdcount = n_distinct(transactionId))
 
 # export dataframe as csv to your working directory
-write_csv(ga_data_app_completedpurchase, "week7_app_purchase.csv")
-
+write_csv(ga_data_app_allcompletedpurchase, "week7_appall_purchase.csv")
+write_csv(ga_data_app_HDILAcompletedpurchase, "week7_appHDILA_purchase.csv")
 
