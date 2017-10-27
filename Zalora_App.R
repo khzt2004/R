@@ -72,23 +72,81 @@ endDate <- "2017-10-22"
 
 #Completed purchase report - APP
 
-ga_data_app_completedpurchase <- data.frame()
+ga_data_temp_hk <- 
+  google_analytics_4(id_app_hk, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_sessionssegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp_hk$id_combined <- id_app_hk
+ga_data_temp_hk$segment <- "App_HDILA"
 
-for (i in id_app_combined) {
-  ga_data_temp6 <- 
-    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
-                       date_range = c(startDate, endDate), 
-                       metrics = c("itemRevenue"), 
-                       dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                       segments = c(seg_HDILA_sessionssegment),
-                       anti_sample = TRUE,
-                       max = -1)
-  ga_data_temp6$id_app_combined <- i
-  ga_data_app_completedpurchase <- rbind(ga_data_app_completedpurchase, ga_data_temp6)
-}
+ga_data_temp_indo <- 
+  google_analytics_4(id_app_indo, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_sessionssegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp_indo$id_combined <- id_app_indo
+ga_data_temp_indo$segment <- "App_HDILA"
+
+ga_data_temp_sg <- 
+  google_analytics_4(id_app_sg, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_sessionssegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp_sg$id_combined <- id_app_sg
+ga_data_temp_sg$segment <- "App_HDILA"
+
+ga_data_temp_my <- 
+  google_analytics_4(id_app_my, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_sessionssegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp_my$id_combined <- id_app_my
+ga_data_temp_my$segment <- "App_HDILA"
+
+ga_data_temp_ph <- 
+  google_analytics_4(id_app_ph, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_sessionssegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp_ph$id_combined <- id_app_ph
+ga_data_temp_ph$segment <- "App_HDILA"
+
+ga_data_temp_tw <- 
+  google_analytics_4(id_app_tw, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_sessionssegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp_tw$id_combined <- id_app_tw
+ga_data_temp_tw$segment <- "App_HDILA"
+
+ga_data_app_completedpurchase <- rbind(ga_data_temp_hk, 
+                                   ga_data_temp_indo,
+                                   ga_data_temp_sg,
+                                   ga_data_temp_my,
+                                   ga_data_temp_ph,
+                                   ga_data_temp_tw)
 
 ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
-  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_app_combined" = "viewId")) %>%
   mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
                              grepl("ID", viewName, ignore.case = TRUE) ~"ID",
                              grepl("SG", viewName, ignore.case = TRUE) ~"SG",
@@ -113,6 +171,7 @@ ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
                           date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
   ))
 
+#Completed purchase report exclude users - APP
 ga_data_app_excludeusers_completedpurchase <- data.frame()
 
 for (i in id_app_combined) {
@@ -129,7 +188,7 @@ for (i in id_app_combined) {
 }
 
 ga_data_app_excludeusers_completedpurchase <- ga_data_app_excludeusers_completedpurchase %>%
-  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_app_combined" = "viewId")) %>%
   mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
                              grepl("ID", viewName, ignore.case = TRUE) ~"ID",
                              grepl("SG", viewName, ignore.case = TRUE) ~"SG",
