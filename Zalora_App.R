@@ -62,10 +62,10 @@ seg_HDILA_app_users_landingscreensegment <- segment_ga4("HDILA_app_users_landing
 HDILA_app_users_non_landingscreensegment <- "gaid::TJeP0oWfQeylO94YpZbO3Q"
 seg_HDILA_app_users_non_landingscreensegment <- segment_ga4("HDILA_app_users_non_landingscreensegment", segment_id = HDILA_app_users_non_landingscreensegment)
 
-HDILA_app_users_screensegment <- "gaid::7CyqXwvpSP6gN57g3cQkYg"
+HDILA_app_users_screensegment <- "gaid::38idcWJwRGWopoWcHEezrw"
 seg_HDILA_app_users_screensegment <- segment_ga4("HDILA_app_users_screensegment", segment_id = HDILA_app_users_screensegment)
 
-HDILA_app_users_non_screensegment <- "gaid::38idcWJwRGWopoWcHEezrw"
+HDILA_app_users_non_screensegment <- "gaid::7CyqXwvpSP6gN57g3cQkYg"
 seg_HDILA_app_users_non_screensegment <- segment_ga4("HDILA_app_users_non_screensegment", segment_id = HDILA_app_users_non_screensegment)
 
 
