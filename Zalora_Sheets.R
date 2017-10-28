@@ -55,6 +55,8 @@ seg_HDILA_sessions <- segment_ga4("sessionsvisitedHDILA_Segment", segment_id = s
 sessions_exclude_visitedHDILA_Segment <- "gaid::ESjhzsAKRwqbe6G1NL10xg"
 seg_exclude_HDILA_sessions <- segment_ga4("sessions_exclude_visitedHDILA_Segment", segment_id = sessions_exclude_visitedHDILA_Segment)
 
+HDILA_app_landingscreensegment <- "gaid::2s1LpBdnQkuBsnS0uBdMeQ"
+seg_HDILA_app_landingscreensegment <- segment_ga4("HDILA_app_landingscreensegment", segment_id = HDILA_app_landingscreensegment)
 
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
@@ -110,23 +112,80 @@ write_csv(ga_traffic_data_merged, "traffic_wk7.csv")
 
 
 # App Traffic HDILA Report
-ga_app_traffic_data_merged <- data.frame()
-
-for (i in id_app_combined) {
-  ga_data_temp3 <- 
-    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
+  ga_data_temp_sg <- 
+    google_analytics_4(id_app_sg, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("sessions", "users"), 
-                       dimensions = c("deviceCategory", "date", "screenName"),
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_appSegment),
                        anti_sample = TRUE,
                        max = -1)
-  ga_data_temp3$id_combined <- i
-  ga_app_traffic_data_merged <- rbind(ga_app_traffic_data_merged, ga_data_temp3)
-}
-
-ga_app_traffic_data_merged <- ga_app_traffic_data_merged %>%
-  filter(grepl("HDILA", screenName, ignore.case = TRUE)) %>%
-  select(-screenName) %>%
+  ga_data_temp_sg$id_combined <- id_app_sg
+  ga_data_temp_sg$segment <- "HDILA Sessions"
+  
+  ga_data_temp_my <- 
+    google_analytics_4(id_app_my, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_appSegment),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp_my$id_combined <- id_app_my
+  ga_data_temp_my$segment <- "HDILA Sessions"
+  
+  ga_data_temp_indo <- 
+    google_analytics_4(id_app_indo, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_appSegment),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp_indo$id_combined <- id_app_indo
+  ga_data_temp_indo$segment <- "HDILA Sessions"
+  
+  ga_data_temp_ph <- 
+    google_analytics_4(id_app_ph, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_appSegment),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp_ph$id_combined <- id_app_ph
+  ga_data_temp_ph$segment <- "HDILA Sessions"
+  
+  ga_data_temp_hk <- 
+    google_analytics_4(id_app_hk, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_appSegment),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp_hk$id_combined <- id_app_hk
+  ga_data_temp_hk$segment <- "HDILA Sessions"
+  
+  ga_data_temp_tw <- 
+    google_analytics_4(id_app_tw, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("sessions", "users"), 
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_appSegment),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp_tw$id_combined <- id_app_tw
+  ga_data_temp_tw$segment <- "HDILA Sessions"
+  
+  ga_data_app_traffic <- rbind(ga_data_temp_sg, 
+                               ga_data_temp_indo,
+                               ga_data_temp_sg,
+                               ga_data_temp_my,
+                               ga_data_temp_ph,
+                               ga_data_temp_tw)
+  
+  ga_data_app_traffic <- ga_data_app_traffic %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
                              grepl("ID", viewName, ignore.case = TRUE) ~"ID",
@@ -153,7 +212,7 @@ ga_app_traffic_data_merged <- ga_app_traffic_data_merged %>%
   ))
 
 # export dataframe as csv to your working directory
-write_csv(ga_app_traffic_data_merged, "app_traffic_HDILA_wk7.csv")
+write_csv(ga_data_app_traffic, "app_traffic_HDILA_wk7.csv")
 
 
 # App Traffic landing screen Report
@@ -261,6 +320,7 @@ for (i in id_app_combined) {
                        date_range = c(startDate, endDate), 
                        metrics = c("sessions"), 
                        dimensions = c("deviceCategory", "sourceMedium", "date", "shoppingStage", "landingScreenName"),
+                       segments = c(seg_HDILA_app_landingscreensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp6$id_combined <- i
