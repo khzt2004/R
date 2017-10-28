@@ -62,6 +62,13 @@ seg_HDILA_app_users_landingscreensegment <- segment_ga4("HDILA_app_users_landing
 HDILA_app_users_non_landingscreensegment <- "gaid::TJeP0oWfQeylO94YpZbO3Q"
 seg_HDILA_app_users_non_landingscreensegment <- segment_ga4("HDILA_app_users_non_landingscreensegment", segment_id = HDILA_app_users_non_landingscreensegment)
 
+HDILA_app_users_screensegment <- "gaid::7CyqXwvpSP6gN57g3cQkYg"
+seg_HDILA_app_users_screensegment <- segment_ga4("HDILA_app_users_screensegment", segment_id = HDILA_app_users_screensegment)
+
+HDILA_app_users_non_screensegment <- "gaid::38idcWJwRGWopoWcHEezrw"
+seg_HDILA_app_users_non_screensegment <- segment_ga4("HDILA_app_users_non_screensegment", segment_id = HDILA_app_users_non_screensegment)
+
+
 
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
@@ -77,66 +84,66 @@ ga_data_temp_hk <-
                      date_range = c(startDate, endDate), 
                      metrics = c("itemRevenue"), 
                      dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                     segments = c(seg_HDILA_sessionssegment),
+                     segments = c(seg_HDILA_app_users_screensegment),
                      anti_sample = TRUE,
                      max = -1)
 ga_data_temp_hk$id_combined <- id_app_hk
-ga_data_temp_hk$segment <- "App_HDILA"
+ga_data_temp_hk$segment <- "Users - HDILA screen"
 
 ga_data_temp_indo <- 
   google_analytics_4(id_app_indo, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
                      metrics = c("itemRevenue"), 
                      dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                     segments = c(seg_HDILA_sessionssegment),
+                     segments = c(seg_HDILA_app_users_screensegment),
                      anti_sample = TRUE,
                      max = -1)
 ga_data_temp_indo$id_combined <- id_app_indo
-ga_data_temp_indo$segment <- "App_HDILA"
+ga_data_temp_indo$segment <- "Users - HDILA screen"
 
 ga_data_temp_sg <- 
   google_analytics_4(id_app_sg, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
                      metrics = c("itemRevenue"), 
                      dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                     segments = c(seg_HDILA_sessionssegment),
+                     segments = c(seg_HDILA_app_users_screensegment),
                      anti_sample = TRUE,
                      max = -1)
 ga_data_temp_sg$id_combined <- id_app_sg
-ga_data_temp_sg$segment <- "App_HDILA"
+ga_data_temp_sg$segment <- "Users - HDILA screen"
 
 ga_data_temp_my <- 
   google_analytics_4(id_app_my, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
                      metrics = c("itemRevenue"), 
                      dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                     segments = c(seg_HDILA_sessionssegment),
+                     segments = c(seg_HDILA_app_users_screensegment),
                      anti_sample = TRUE,
                      max = -1)
 ga_data_temp_my$id_combined <- id_app_my
-ga_data_temp_my$segment <- "App_HDILA"
+ga_data_temp_my$segment <- "Users - HDILA screen"
 
 ga_data_temp_ph <- 
   google_analytics_4(id_app_ph, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
                      metrics = c("itemRevenue"), 
                      dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                     segments = c(seg_HDILA_sessionssegment),
+                     segments = c(seg_HDILA_app_users_screensegment),
                      anti_sample = TRUE,
                      max = -1)
 ga_data_temp_ph$id_combined <- id_app_ph
-ga_data_temp_ph$segment <- "App_HDILA"
+ga_data_temp_ph$segment <- "Users - HDILA screen"
 
 ga_data_temp_tw <- 
   google_analytics_4(id_app_tw, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
                      metrics = c("itemRevenue"), 
                      dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                     segments = c(seg_HDILA_sessionssegment),
+                     segments = c(seg_HDILA_app_users_screensegment),
                      anti_sample = TRUE,
                      max = -1)
 ga_data_temp_tw$id_combined <- id_app_tw
-ga_data_temp_tw$segment <- "App_HDILA"
+ga_data_temp_tw$segment <- "Users - HDILA screen"
 
 ga_data_app_completedpurchase <- rbind(ga_data_temp_hk, 
                                    ga_data_temp_indo,
@@ -146,7 +153,7 @@ ga_data_app_completedpurchase <- rbind(ga_data_temp_hk,
                                    ga_data_temp_tw)
 
 ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
-  left_join(account_list[c("viewId", "viewName")], by = c("id_app_combined" = "viewId")) %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
                              grepl("ID", viewName, ignore.case = TRUE) ~"ID",
                              grepl("SG", viewName, ignore.case = TRUE) ~"SG",
@@ -172,20 +179,79 @@ ga_data_app_completedpurchase <- ga_data_app_completedpurchase %>%
   ))
 
 #Completed purchase report exclude users - APP
-ga_data_app_excludeusers_completedpurchase <- data.frame()
 
-for (i in id_app_combined) {
-  ga_data_temp7 <- 
-    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
-                       date_range = c(startDate, endDate), 
-                       metrics = c("itemRevenue"), 
-                       dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
-                       segments = c(seg_HDILA_app_users_non_landingscreensegment),
-                       anti_sample = TRUE,
-                       max = -1)
-  ga_data_temp7$id_app_combined <- i
-  ga_data_app_excludeusers_completedpurchase <- rbind(ga_data_app_excludeusers_completedpurchase, ga_data_temp7)
-}
+ga_data_temp2_sg <- 
+  google_analytics_4(id_app_sg, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_app_users_non_screensegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp2_sg$id_combined <- id_app_sg
+ga_data_temp2_sg$segment <- "Users - exclude HDILA screen"
+
+ga_data_temp2_my <- 
+  google_analytics_4(id_app_my, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_app_users_non_screensegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp2_my$id_combined <- id_app_my
+ga_data_temp2_my$segment <- "Users - exclude HDILA screen"
+
+ga_data_temp2_indo <- 
+  google_analytics_4(id_app_indo, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_app_users_non_screensegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp2_indo$id_combined <- id_app_indo
+ga_data_temp2_indo$segment <- "Users - exclude HDILA screen"
+
+ga_data_temp2_ph <- 
+  google_analytics_4(id_app_ph, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_app_users_non_screensegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp2_ph$id_combined <- id_app_ph
+ga_data_temp2_ph$segment <- "Users - exclude HDILA screen"
+
+ga_data_temp2_hk <- 
+  google_analytics_4(id_app_hk, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_app_users_non_screensegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp2_hk$id_combined <- id_app_hk
+ga_data_temp2_hk$segment <- "Users - exclude HDILA screen"
+
+ga_data_temp2_tw <- 
+  google_analytics_4(id_app_tw, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("itemRevenue"), 
+                     dimensions = c("transactionId", "deviceCategory", "date", "productSKU"),
+                     segments = c(seg_HDILA_app_users_non_screensegment),
+                     anti_sample = TRUE,
+                     max = -1)
+ga_data_temp2_tw$id_combined <- id_app_tw
+ga_data_temp2_tw$segment <- "Users - exclude HDILA screen"
+
+ga_data_app_excludeusers_completedpurchase <- rbind(ga_data_temp2_hk, 
+                                       ga_data_temp2_indo,
+                                       ga_data_temp2_sg,
+                                       ga_data_temp2_my,
+                                       ga_data_temp2_ph,
+                                       ga_data_temp2_tw)
 
 ga_data_app_excludeusers_completedpurchase <- ga_data_app_excludeusers_completedpurchase %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_app_combined" = "viewId")) %>%
@@ -216,7 +282,6 @@ ga_data_app_excludeusers_completedpurchase <- ga_data_app_excludeusers_completed
 
 
 ga_data_app_allcompletedpurchase <- ga_data_app_completedpurchase %>%
-  filter(segment = )
   select(Country, Week, deviceCategory, transactionId, productSKU, itemRevenue) %>%
   mutate(productSKUCount = ifelse(productSKU!="", 1, 0)) %>%
   group_by(Country, Week, deviceCategory) %>%
