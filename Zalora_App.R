@@ -323,7 +323,7 @@ write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
   ga_data_temp9_tw_excludeusers$segment <- "Users - exclude HDILA screen"
   
   
-  ga_data_completedpurchase_engagement <- rbind(ga_data_temp9_sg_users,
+  ga_data_completedpurchase_app_engagement <- rbind(ga_data_temp9_sg_users,
                                                 ga_data_temp9_sg_excludeusers,
                                                 ga_data_temp9_my_users,
                                                 ga_data_temp9_my_excludeusers,
@@ -337,7 +337,7 @@ write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
                                                 ga_data_temp9_tw_excludeusers)
 
 
-ga_data_app_completedpurchase_engagement <- ga_data_app_completedpurchase_engagement %>%
+  ga_data_completedpurchase_app_engagement <- ga_data_completedpurchase_app_engagement %>%
   left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
   mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
                              grepl("ID", viewName, ignore.case = TRUE) ~"ID",
@@ -364,7 +364,7 @@ ga_data_app_completedpurchase_engagement <- ga_data_app_completedpurchase_engage
   ))
 
 # export dataframe as csv to your working directory
-write_csv(ga_data_app_completedpurchase_engagement, "week7_app_purchase_users_engagement.csv")
+write_csv(ga_data_completedpurchase_app_engagement, "week7_app_purchase_users_engagement.csv")
 
 
 # Completed purchase report - landing screen app
