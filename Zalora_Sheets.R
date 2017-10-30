@@ -63,7 +63,7 @@ seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
 # enter start date and end date here. Format: yyyy-mm-dd
 startDate <- "2017-09-08"
-endDate <- "2017-10-22"
+endDate <- "2017-10-29"
 
 # Traffic Report
 ga_traffic_data_merged <- data.frame()
@@ -311,52 +311,6 @@ ga_addCart_data_merged <- ga_addCart_data_merged %>%
 write_csv(ga_addCart_data_merged, "addcart_wk7.csv")
 
 
-# Clicked Add to Cart report - APP
-ga_addCart_app_data_merged <- data.frame()
-
-for (i in id_app_combined) {
-  ga_data_temp6 <- 
-    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
-                       date_range = c(startDate, endDate), 
-                       metrics = c("sessions"), 
-                       dimensions = c("deviceCategory", "sourceMedium", "date", "shoppingStage", "landingScreenName"),
-                       segments = c(seg_HDILA_app_landingscreensegment),
-                       anti_sample = TRUE,
-                       max = -1)
-  ga_data_temp6$id_combined <- i
-  ga_addCart_app_data_merged <- rbind(ga_addCart_app_data_merged, ga_data_temp6)
-}
-
-ga_addCart_app_data_merged <- ga_addCart_app_data_merged %>%
-  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
-  filter(grepl("HDILA", landingScreenName, ignore.case = TRUE) & 
-           grepl("^ADD_TO_CART$", shoppingStage, ignore.case = TRUE)) %>%
-  mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
-                             grepl("ID", viewName, ignore.case = TRUE) ~"ID",
-                             grepl("SG", viewName, ignore.case = TRUE) ~"SG",
-                             grepl("MY", viewName, ignore.case = TRUE) ~"MY",
-                             grepl("PH", viewName, ignore.case = TRUE) ~"PH",
-                             grepl("TW", viewName, ignore.case = TRUE) ~"TW"),
-         date = ymd(date)) %>%
-  mutate(Week = case_when(date >= '2017-09-08' & date <= '2017-09-10' ~ "1",
-                          date >= '2017-09-11' & date <= '2017-09-17' ~ "2",
-                          date >= '2017-09-18' & date <= '2017-09-24' ~ "3",
-                          date >= '2017-09-25' & date <= '2017-10-01' ~ "4",
-                          date >= '2017-10-02' & date <= '2017-10-08' ~ "5",
-                          date >= '2017-10-09' & date <= '2017-10-15' ~ "6",
-                          date >= '2017-10-16' & date <= '2017-10-22' ~ "7",
-                          date >= '2017-10-23' & date <= '2017-10-29' ~ "8",
-                          date >= '2017-10-30' & date <= '2017-11-05' ~ "9",
-                          date >= '2017-11-06' & date <= '2017-11-12' ~ "10",
-                          date >= '2017-11-13' & date <= '2017-11-19' ~ "11",
-                          date >= '2017-11-20' & date <= '2017-11-26' ~ "12",
-                          date >= '2017-11-27' & date <= '2017-12-03' ~ "13",
-                          date >= '2017-12-04' & date <= '2017-12-10' ~ "14",
-                          date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
-  ))
-
-# export dataframe as csv to your working directory
-write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
 
 #Completed purchase report - sessions
 ga_data_completedpurchase <- data.frame()
@@ -406,6 +360,51 @@ ga_data_completedpurchase <- ga_data_completedpurchase %>%
 write_csv(ga_data_completedpurchase, "week7_purchase_sessions.csv")
 
 
+#Completed purchase report - user engagement
+ga_data_completedpurchase_engagement <- data.frame()
+
+for (i in id_combined) {
+  ga_data_temp7 <- 
+    google_analytics_4(i, #=This is a (dynamic) ViewID parameter
+                       date_range = c(startDate, endDate), 
+                       metrics = c("pageviews", "sessions", "sessionDuration"), 
+                       dimensions = c("deviceCategory", "date"),
+                       segments = c(seg_HDILA_users,seg_nonHDILA_users),
+                       anti_sample = TRUE,
+                       max = -1)
+  ga_data_temp7$id_combined <- i
+  ga_data_completedpurchase_engagement <- rbind(ga_data_completedpurchase_engagement, ga_data_temp7)
+}
+
+ga_data_completedpurchase_engagement <- ga_data_completedpurchase_engagement %>%
+  left_join(account_list[c("viewId", "viewName")], by = c("id_combined" = "viewId")) %>%
+  mutate(Country = case_when(grepl("HK", viewName, ignore.case = TRUE) ~"HK",
+                             grepl("ID", viewName, ignore.case = TRUE) ~"ID",
+                             grepl("SG", viewName, ignore.case = TRUE) ~"SG",
+                             grepl("MY", viewName, ignore.case = TRUE) ~"MY",
+                             grepl("PH", viewName, ignore.case = TRUE) ~"PH",
+                             grepl("TW", viewName, ignore.case = TRUE) ~"TW"),
+         date = ymd(date)) %>%
+  mutate(Week = case_when(date >= '2017-09-08' & date <= '2017-09-10' ~ "1",
+                          date >= '2017-09-11' & date <= '2017-09-17' ~ "2",
+                          date >= '2017-09-18' & date <= '2017-09-24' ~ "3",
+                          date >= '2017-09-25' & date <= '2017-10-01' ~ "4",
+                          date >= '2017-10-02' & date <= '2017-10-08' ~ "5",
+                          date >= '2017-10-09' & date <= '2017-10-15' ~ "6",
+                          date >= '2017-10-16' & date <= '2017-10-22' ~ "7",
+                          date >= '2017-10-23' & date <= '2017-10-29' ~ "8",
+                          date >= '2017-10-30' & date <= '2017-11-05' ~ "9",
+                          date >= '2017-11-06' & date <= '2017-11-12' ~ "10",
+                          date >= '2017-11-13' & date <= '2017-11-19' ~ "11",
+                          date >= '2017-11-20' & date <= '2017-11-26' ~ "12",
+                          date >= '2017-11-27' & date <= '2017-12-03' ~ "13",
+                          date >= '2017-12-04' & date <= '2017-12-10' ~ "14",
+                          date >= '2017-12-11' & date <= '2017-12-17' ~ "15"
+  ))
+
+# export dataframe as csv to your working directory
+write_csv(ga_data_completedpurchase_engagement, "week7_purchase_users_engagement.csv")
+
 #Completed purchase report - users
 ga_data_completedpurchase <- data.frame()
 
@@ -452,7 +451,5 @@ ga_data_completedpurchase <- ga_data_completedpurchase %>%
 
 # export dataframe as csv to your working directory
 write_csv(ga_data_completedpurchase, "week7_purchase_users.csv")
-
-
 
 
