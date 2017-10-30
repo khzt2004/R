@@ -193,22 +193,22 @@ write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_HDILA_users),
+                       segments = c(seg_HDILA_app_users_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_sg_users$id_combined <- id_app_sg
-  ga_data_temp9_sg_users$segment <- "Users visited HDILA Page"
+  ga_data_temp9_sg_users$segment <- "Users - HDILA Screen"
   
   ga_data_temp9_sg_excludeusers <- 
     google_analytics_4(id_app_sg, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_nonHDILA_users),
+                       segments = c(seg_HDILA_app_users_non_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_sg_excludeusers$id_combined <- id_app_sg
-  ga_data_temp9_sg_excludeusers$segment <- "Users did not visit HDILA Page"
+  ga_data_temp9_sg_excludeusers$segment <- "Users - exclude HDILA screen"
   
   
   ga_data_temp9_my_users <- 
@@ -216,66 +216,66 @@ write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_HDILA_users),
+                       segments = c(seg_HDILA_app_users_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_my_users$id_combined <- id_app_my
-  ga_data_temp9_my_users$segment <- "Users visited HDILA Page"
+  ga_data_temp9_my_users$segment <- "Users - HDILA Screen"
   
   ga_data_temp9_my_excludeusers <- 
     google_analytics_4(id_app_my, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_nonHDILA_users),
+                       segments = c(seg_HDILA_app_users_non_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_my_excludeusers$id_combined <- id_app_my
-  ga_data_temp9_my_excludeusers$segment <- "Users did not visit HDILA Page"
+  ga_data_temp9_my_excludeusers$segment <- "Users - exclude HDILA screen"
   
   ga_data_temp9_indo_users <- 
     google_analytics_4(id_app_indo, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_HDILA_users),
+                       segments = c(seg_HDILA_app_users_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_indo_users$id_combined <- id_app_indo
-  ga_data_temp9_indo_users$segment <- "Users visited HDILA Page"
+  ga_data_temp9_indo_users$segment <- "Users - HDILA Screen"
   
   ga_data_temp9_indo_excludeusers <- 
     google_analytics_4(id_app_indo, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_nonHDILA_users),
+                       segments = c(seg_HDILA_app_users_non_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_indo_excludeusers$id_combined <- id_app_indo
-  ga_data_temp9_indo_excludeusers$segment <- "Users did not visit HDILA Page"
+  ga_data_temp9_indo_excludeusers$segment <- "Users - exclude HDILA screen"
   
   ga_data_temp9_ph_users <- 
     google_analytics_4(id_app_ph, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_HDILA_users),
+                       segments = c(seg_HDILA_app_users_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_ph_users$id_combined <- id_app_ph
-  ga_data_temp9_ph_users$segment <- "Users visited HDILA Page"
+  ga_data_temp9_ph_users$segment <- "Users - HDILA Screen"
   
   ga_data_temp9_ph_excludeusers <- 
     google_analytics_4(id_app_ph, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_nonHDILA_users),
+                       segments = c(seg_HDILA_app_users_non_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_ph_excludeusers$id_combined <- id_app_ph
-  ga_data_temp9_ph_excludeusers$segment <- "Users did not visit HDILA Page"
+  ga_data_temp9_ph_excludeusers$segment <- "Users - exclude HDILA screen"
   
   
   ga_data_temp9_hk_users <- 
@@ -283,44 +283,44 @@ write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_HDILA_users),
+                       segments = c(seg_HDILA_app_users_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_hk_users$id_combined <- id_app_hk
-  ga_data_temp9_hk_users$segment <- "Users visited HDILA Page"
+  ga_data_temp9_hk_users$segment <- "Users - HDILA Screen"
   
   ga_data_temp9_hk_excludeusers <- 
     google_analytics_4(id_app_hk, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_nonHDILA_users),
+                       segments = c(seg_HDILA_app_users_non_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_hk_excludeusers$id_combined <- id_app_hk
-  ga_data_temp9_hk_excludeusers$segment <- "Users did not visit HDILA Page"
+  ga_data_temp9_hk_excludeusers$segment <- "Users - exclude HDILA screen"
   
   ga_data_temp9_tw_users <- 
     google_analytics_4(id_app_tw, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_HDILA_users),
+                       segments = c(seg_HDILA_app_users_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_tw_users$id_combined <- id_app_tw
-  ga_data_temp9_tw_users$segment <- "Users visited HDILA Page"
+  ga_data_temp9_tw_users$segment <- "Users - HDILA Screen"
   
   ga_data_temp9_tw_excludeusers <- 
     google_analytics_4(id_app_tw, #=This is a (dynamic) ViewID parameter
                        date_range = c(startDate, endDate), 
                        metrics = c("screenviews", "sessions", "sessionDuration"), 
                        dimensions = c("deviceCategory", "date"),
-                       segments = c(seg_nonHDILA_users),
+                       segments = c(seg_HDILA_app_users_non_screensegment),
                        anti_sample = TRUE,
                        max = -1)
   ga_data_temp9_tw_excludeusers$id_combined <- id_app_tw
-  ga_data_temp9_tw_excludeusers$segment <- "Users did not visit HDILA Page"
+  ga_data_temp9_tw_excludeusers$segment <- "Users - exclude HDILA screen"
   
   
   ga_data_completedpurchase_engagement <- rbind(ga_data_temp9_sg_users,
@@ -334,7 +334,7 @@ write_csv(ga_addCart_app_data_merged, "addcart_app_wk7.csv")
                                                 ga_data_temp9_hk_users,
                                                 ga_data_temp9_hk_excludeusers,
                                                 ga_data_temp9_tw_users,
-                                                ga_data_temp9_tw_excludeusers,)
+                                                ga_data_temp9_tw_excludeusers)
 
 
 ga_data_app_completedpurchase_engagement <- ga_data_app_completedpurchase_engagement %>%
