@@ -55,7 +55,7 @@ seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 startDate <- "2017-09-08"
 endDate <- "2017-10-29"
 
-# Traffic Report
+# Traffic Report - paste data into "Web Traffic Sources" worksheet
 ga_traffic_data_merged <- data.frame()
 
 for (i in id_combined) {
@@ -101,7 +101,7 @@ ga_traffic_data_merged <- ga_traffic_data_merged %>%
 write_csv(ga_traffic_data_merged, "traffic_wk7.csv")
 
 
-# Clicked Add to Cart report
+# Clicked Add to Cart report - paste data into "Add_Cart" worksheet
 ga_addCart_data_merged <- data.frame()
 
 for (i in id_combined) {
@@ -151,7 +151,7 @@ write_csv(ga_addCart_data_merged, "addcart_wk7.csv")
 
 
 
-#Completed purchase report - sessions
+#Completed purchase report - sessions - paste data into "Purchase Data" worksheet
 ga_data_completedpurchase <- data.frame()
 
 for (i in id_combined) {
@@ -199,7 +199,7 @@ ga_data_completedpurchase <- ga_data_completedpurchase %>%
 write_csv(ga_data_completedpurchase, "week7_purchase_sessions.csv")
 
 
-#Completed purchase report - user engagement
+#Completed purchase report - user engagement - paste data into "Purchase_Data_Engagement" worksheet
 ga_data_completedpurchase_engagement <- data.frame()
 
 for (i in id_combined) {
@@ -289,7 +289,7 @@ ga_data_completedpurchase_all_engagement <- rbind(ga_data_completedpurchase_enga
 # export dataframe as csv to your working directory
 write_csv(ga_data_completedpurchase_all_engagement, "week7_purchase_users_engagement.csv")
 
-#Completed purchase report - users
+#Completed purchase report - users - paste data into "Purchase_Data_User" worksheet
 ga_data_completedpurchase <- data.frame()
 
 for (i in id_combined) {
