@@ -4,11 +4,12 @@ library(rpivotTable)
 library(tidyverse)
 
 # get stock returns and define weights for first portfolio
-
-stock_returns_monthly <- c("NVDA", "FB", "BABA", "ADBE") %>%
+#"NVDA", "FB", "BABA", "ADBE"
+stock_returns_monthly <- c("SPY") %>%
   tq_get(get  = "stock.prices",
-         from = "2017-01-01",
+         from = "2005-01-01",
          to   = "2017-12-01") %>%
+  mutate(symbol = "SPY") %>%
   group_by(symbol) %>%
   tq_transmute(select     = adjusted, 
                mutate_fun = periodReturn, 
@@ -16,12 +17,12 @@ stock_returns_monthly <- c("NVDA", "FB", "BABA", "ADBE") %>%
                col_rename = "Ra") %>%
   mutate(portfolio = '1')
 
-wts <- c(0.4, 0.25, 0.15, 0.2)
+wts <- c(1)
 
 # get stock returns and define weights for second portfolio
-stock_returns_monthly_2 <- c("SPY", "SPHQ", "FHLC") %>%
+stock_returns_monthly_2 <- c("VFISX", "VTSMX", "VGTSX") %>%
   tq_get(get  = "stock.prices",
-         from = "2017-01-01",
+         from = "2005-01-01",
          to   = "2017-12-01") %>%
   group_by(symbol) %>%
   tq_transmute(select     = adjusted, 
@@ -30,7 +31,7 @@ stock_returns_monthly_2 <- c("SPY", "SPHQ", "FHLC") %>%
                col_rename = "Ra") %>%
   mutate(portfolio = '2')
 
-wts1 <- c(0.3, 0.3, 0.4)
+wts1 <- c(0.15, 0.425, 0.425)
 
 # define investment sum
 principal_sum <- 60000
@@ -79,7 +80,7 @@ portfolio_growth_monthly_bind %>%
   ggplot(aes(x = date, y = investment.growth, color = factor(portfolio))) +
   geom_line(size = 2) +
   labs(title = "Portfolio Growth",
-       subtitle = "Comparing Multiple Portfolios: \n 1. NVDA, FB, BABA, ADBE \n 2. SPY, SPHQ, FHLC",
+       subtitle = "Comparing Multiple Portfolios: \n 1. SPY \n 2. VFISX, VTSMX, VGTSXC",
        caption = "See whether portfolio beats the index",
        x = "", y = "Portfolio Value",
        color = "Portfolio") +
@@ -104,7 +105,7 @@ returns_diff1$investment.growth
 # show the % growth of principal investment at end of investment period for second portfolio
 (returns_diff1$investment.growth/principal_sum)-1
 
-# show the % difference in investment returns at end of investment period
+# show the % difference in portfolio amount at end of investment period
 (returns_diff$investment.growth/returns_diff1$investment.growth)-1
 
 # show the monetary difference in investment returns at end of investment period
