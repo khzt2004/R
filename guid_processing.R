@@ -91,18 +91,17 @@ final_dataset_fly2 <- read.csv("final_dataset_fly2.csv")
 
 final_dataset_fly2_binned <- final_dataset_fly2 %>%
   mutate(booking_lead_days = as.integer(as.character(booking_lead_days))) %>%
-  mutate(booking_lead_days_bin = case_when(booking_lead_days < 0 & booking_lead_days >= -9 ~ "-1 to -9",
-                                       booking_lead_days <= -10 & booking_lead_days >= -50 ~ "-10 to -50",
-                                       booking_lead_days < -50 ~ "less than -50",
-                                       booking_lead_days == 0 ~ '0',
-                                       booking_lead_days > 0 &  booking_lead_days <= 15 ~ "1-15",
-                                       booking_lead_days > 15 &  booking_lead_days <= 30 ~ "16-30",
-                                       booking_lead_days > 30 &  booking_lead_days <= 60 ~ "31-60",
-                                       booking_lead_days > 60 &  booking_lead_days <= 90 ~ "61-90",
-                                       booking_lead_days > 90 &  booking_lead_days <= 120 ~ "91-120",
-                                       booking_lead_days > 120 &  booking_lead_days <= 200 ~ "121-200",
-                                       booking_lead_days > 200 ~ ">200",
-                                       TRUE ~ as.character(booking_lead_days))) %>%
+  mutate(booking_lead_days_bin = case_when(booking_lead_days < 0 & booking_lead_days >= -30 ~ "-1 month",
+                                           booking_lead_days < -30 & booking_lead_days > -60 ~ "-2 months",
+                                           booking_lead_days < -60 ~ "> -3 months",
+                                           booking_lead_days == 0 ~ '0',
+                                           booking_lead_days > 0 &  booking_lead_days <= 30 ~ "1 month",
+                                           booking_lead_days > 30 &  booking_lead_days <= 60 ~ "2 months",
+                                           booking_lead_days > 60 &  booking_lead_days <= 90 ~ "3 months",
+                                           booking_lead_days > 90 &  booking_lead_days <= 120 ~ "4 months",
+                                           booking_lead_days > 120 &  booking_lead_days <= 180 ~ "5-6 months",
+                                           booking_lead_days > 180 ~ "> 6 months",
+                                           TRUE ~ as.character(booking_lead_days))) %>%
   mutate(device_overlap_bin = case_when(grepl("desktop", device_overlap, ignore.case = TRUE) & grepl("mobile|tablet", device_overlap, ignore.case = TRUE) ~"desktop + others",
                                         device_overlap == "desktop" ~ "desktop",
                                         device_overlap == "mobileApp" ~ "App",
