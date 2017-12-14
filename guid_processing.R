@@ -38,16 +38,18 @@ FINAL_DATASET_channel_pagepath <-  FINAL_DATASET_channel_pagepath %>%
   mutate(FB_FS_Ratio = flightbooking/flightsearch)
 
 # binning for Dream table - page categorisation
+pagesection <- read.csv("page_lookup.csv")
 dream2 <- read.csv("dream2_newpagepath.csv")
 # rpivotTable(dream2)
 
 dream2_binpage <- dream2 %>%
+  left_join(pagesection, by = c("newpagepath")) %>%
   mutate(page_category = case_when(grepl("/vbook", newpagepath, ignore.case = TRUE) ~"vbook",
                                    grepl("/vloyalty", newpagepath, ignore.case = TRUE) ~"vloyalty",
                                    grepl("/vauth", newpagepath, ignore.case = TRUE) ~"vauth",
                                    grepl("/vmanage", newpagepath, ignore.case = TRUE) ~"vmanage",
                                    grepl("/vpref", newpagepath, ignore.case = TRUE) ~"vpref",
-                                   grepl("/content/", newpagepath, ignore.case = TRUE) ~"content",
+                                   grepl("/content/", newpagepath, ignore.case = TRUE) ~"travel insurance",
                                    grepl("/activity-deals/", newpagepath, ignore.case = TRUE) ~"activity deals",
                                    grepl("Hotel-Information", newpagepath, ignore.case = TRUE) ~"hotel info",
                                    grepl("/entertainment/", newpagepath, ignore.case = TRUE) ~"entertainment",
@@ -61,19 +63,21 @@ dream2_binpage <- dream2 %>%
                                         device_overlap == "mobileApp" ~ "App",
                                         device_overlap == "tabletWeb" | device_overlap == "mobileWeb" ~ "mobile",
                                         TRUE ~ "Others")) %>%
-  select(1:3, 8, 4,9, 5:7)
+  mutate(pagesection_combine = coalesce(as.character(pagesection), as.character(page_category))) %>%
+  select(1:3, 11, 4,10, 5:7)
 
 write_csv(dream2_binpage, "dream2_binpage.csv")
 
 dream3 <- read.csv("dream3_newpagepath.csv")
 
 dream3_binpage <- dream3 %>%
+  left_join(pagesection, by = c("newpagepath")) %>%
   mutate(page_category = case_when(grepl("/vbook", newpagepath, ignore.case = TRUE) ~"vbook",
                                    grepl("/vloyalty", newpagepath, ignore.case = TRUE) ~"vloyalty",
                                    grepl("/vauth", newpagepath, ignore.case = TRUE) ~"vauth",
                                    grepl("/vmanage", newpagepath, ignore.case = TRUE) ~"vmanage",
                                    grepl("/vpref", newpagepath, ignore.case = TRUE) ~"vpref",
-                                   grepl("/content/", newpagepath, ignore.case = TRUE) ~"content",
+                                   grepl("/content/", newpagepath, ignore.case = TRUE) ~"travel insurance",
                                    grepl("/activity-deals/", newpagepath, ignore.case = TRUE) ~"activity deals",
                                    grepl("Hotel-Information", newpagepath, ignore.case = TRUE) ~"hotel info",
                                    grepl("/entertainment", newpagepath, ignore.case = TRUE) ~"entertainment",
@@ -81,8 +85,9 @@ dream3_binpage <- dream3 %>%
                                    grepl("/trips/", newpagepath, ignore.case = TRUE) ~"trips",
                                    grepl("/error/404/", newpagepath, ignore.case = TRUE) ~"error 404",
                                    grepl("/press-release", newpagepath, ignore.case = TRUE) ~"press release",
-                                   TRUE ~ as.character(newpagepath))) %>%
-  select(1:3, 9, 4:8)
+                                   TRUE ~ as.character(newpagepath))) %>% 
+  mutate(pagesection_combine = coalesce(as.character(pagesection), as.character(page_category))) %>%
+  select(1:3, 11, 4:8)
 
 write_csv(dream3_binpage, "dream3_binpage.csv")
 
