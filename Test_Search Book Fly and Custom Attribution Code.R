@@ -1,5 +1,4 @@
-library (dplyr)
-library (plyr)
+library(tidyverse)
 library (tidyr)
 library (bigrquery)
 library (sqldf)
@@ -97,9 +96,11 @@ transData$vid <- as.character(transData$vid)
 # Join the trans info and visit history data
 combineData <- left_join(visitDataFinal, transData, by = c("vid" = "vid","sid" = "sid"))
 
-#combineData <- setDF(combineData)
-#combineData1 <- setDT(head(combineData, 1000))
-combineData1 <- head(combineData, 2000000)
+# add reference table of transIDs for joining table after lagging IDs
+transID <- as.factor(combineData$transID)
+TransID_Table <- as.data.frame(transID)
+TransID_Table$numericID <- as.numeric(combineData$transID)
+TransID_Table <- distinct(TransID_Table)
 combineData$vid <- as.numeric(combineData$vid)
 combineData$transID <- as.numeric(combineData$transID)
 
@@ -123,10 +124,17 @@ combineDataFill_1$transDateFill <- as.Date(combineDataFill_1$transDateFill)
 combineDataFill_1 <- combineDataFill_1[,-c(24)]
 
 # remove rows with fill column value = NA as these are the visits after transactions
-filterCombineDataFill <- subset(combineDataFill_1, is.na(transIDFill) == FALSE)
+filterCombineDataFill_na <- subset(combineDataFill_1, is.na(transIDFill) == FALSE)
+
+# convert the transIDs back to character type
+filterCombineDataFill <- left_join(filterCombineDataFill_na, TransID_Table, by = c("transIDFill" = "numericID"))
+filterCombineDataFill <- left_join(filterCombineDataFill, TransID_Table, by = c("transID.x" = "numericID"))
+filterCombineDataFill <- filterCombineDataFill %>%
+  select(1:13,25,15:21, transIDFill = transID.y, 23)
 
 # since now we have a "window" leading to the booking
-# add in ranking for interactions in the conversion path 
+# add in ranking for interactions in the conversion path
+
 filterCombineDataFill_1 <- dplyr::mutate(group_by(filterCombineDataFill, transIDFill), pathrankfirst = row_number(visitNo), pathranklast = row_number(desc(visitNo)))
 filterCombineDataFill_2 <- transform(filterCombineDataFill_1, s2b = difftime(transDateFill, date, units = "days"))
 filterCombineDataFill_2$s2b <- as.integer(filterCombineDataFill_2$s2b)
@@ -134,13 +142,19 @@ filterCombineDataFill_2$s2b <- as.integer(filterCombineDataFill_2$s2b)
 filterCombineDataFill_3 <- left_join(filterCombineDataFill_2, bucket4, c("s2b" = "lag"))
 filterCombineDataFill_3 <- filterCombineDataFill_3[,-c(27:30)]
 colnames(filterCombineDataFill_3)[27] <- "s2bBk4"
-filterCombineDataFill_3 <- transform(filterCombineDataFill_3, s2bBk4M = ifelse(!is.na(transID), "Booking", ifelse(s2b == 0, "Same Day of Booking", s2bBk4)))
+filterCombineDataFill_3 <- filterCombineDataFill_3 %>%
+  mutate(s2bBk4M = case_when(!is.na(transID) ~ "Booking",
+                             s2b == 0 ~ "Same Day of Booking",
+                             TRUE ~ as.character(s2bBk4))) %>%
+  mutate(transID = as.character(transID))
+
 
 # Bring in the new channel grouping
 filterCombineDataFill_4 <- left_join(filterCombineDataFill_3, channelMap, c("channel" = "Channel"))
 
 # This is the final visit history data that we will operate further on
-filterCombineDataFinal <- filterCombineDataFill_4
+# filterCombineDataFinal <- filterCombineDataFill_4
+filterCombineDataFinal <- filterCombineDataFill_3
 
 # summarise info at the trans level to get
 # firstVisitDate: 1st date when users start researching. Time lag from this to trans date
@@ -163,6 +177,11 @@ transInfo1 <- cbind(transInfo, minCapDate = as.Date(c("2016-09-15")))
 transInfo2 <- transform(transInfo1, transVsCapDate = difftime(transDate, minCapDate, units = "days"))
 
 # Bring in other trans information. IMPORTANT: This is so that we can segment the conversion path to see the difference between devices, markets etc
+# ensure joining columns have same data type
+transData$vid <- as.numeric(transData$vid)
+transInfo2$vid <- as.numeric(transInfo2$vid)
+transInfo2$transIDFill <- as.character(transInfo2$transIDFill)
+transData$transID <- as.character(transData$transID)
 transFull <- left_join(transData, transInfo2, by = c("transID" = "transIDFill", "vid" = "vid"))
 
 # this is specific for AirNZ, but in your case, please check if there is any NA rows and understand why in this case it is:
@@ -396,7 +415,7 @@ assistConv <- sqldf("select sourceMedium, channel, count(transIDFill) as assiste
 lastClickVsAssist <- left_join(lastClick, assistConv, c("sourceMedium" = "sourceMedium", "channel" = "channel"))
 
 # Insight: The Channel position in the conversion path (based on percentile not average)
-channelPosCat <- dplyr::summarise(group_by(CombineDataFinal_Dec, ChannelCat1), cnt = n(), avgPos = sum(pathranklast)/n(),
+channelPosCat <- dplyr::summarise(group_by(CombineDataFinal_Dec, channel), cnt = n(), avgPos = sum(pathranklast)/n(),
                                pospct80 = quantile(pathranklast, 0.8), pospct50 = quantile(pathranklast, 0.5))
 
 
