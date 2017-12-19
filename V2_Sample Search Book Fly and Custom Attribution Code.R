@@ -406,7 +406,29 @@ channelPosCat <- dplyr::summarise(group_by(CombineDataFinal_Dec, ChannelCat1), c
                                pospct80 = quantile(pathranklast, 0.8), pospct50 = quantile(pathranklast, 0.5))
 
 
+# further path duration analysis
+df_multi_paths_tl <- CombineDataFinal_Dec %>%
+  group_by(vid) %>%
+  summarise(path = paste(as.character(channel), collapse = ' > '),
+            first_touch_date = min(date),
+            last_touch_date = max(date),
+            tot_time_lapse = round(as.numeric(last_touch_date - first_touch_date)),
+            conversion = sum(noFlightTrans)) %>%
+  ungroup()
 
+# distribution plot
+ggplot(df_multi_paths_tl %>% filter(conversion >= 1), aes(x = tot_time_lapse)) +
+  theme_minimal() +
+  geom_histogram(fill = '#4e79a7', binwidth = 1.5)
+
+# cumulative distribution plot
+# the x-intercept is the value for 95% of paths. Hence if intercept is 130,
+# 95% of paths occur within 130 days
+ggplot(df_multi_paths_tl %>% filter(conversion >= 1), aes(x = tot_time_lapse)) +
+  theme_minimal() +
+  stat_ecdf(geom = 'step', color = '#4e79a7', size = 2, alpha = 0.7) +
+  geom_hline(yintercept = 0.95, color = '#e15759', size = 1.5) +
+  geom_vline(xintercept = 130, color = '#e15759', size = 1.5, linetype = 2)
 
 
 
