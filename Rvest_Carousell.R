@@ -4,7 +4,6 @@ library(stringr)
 
 url <-"https://sg.carousell.com/categories/mobile-phones-215/iphones-1235/iphone-6-series-1298/?cc_id=1700&collection_id=1298&mobile_model=MOBILE_MODEL_IPHONE_6S_PLUS&mobile_storage=MOBILE_STORAGE_64_GB&sort_by=a"
 
-
 getPostNameDate <- function(url){
   hyperlink <- read_html(url)
   postname <- hyperlink %>%
@@ -12,15 +11,15 @@ getPostNameDate <- function(url){
     html_text()
   postname <- as.list(postname)
   postdate <- hyperlink %>%
-    html_nodes(xpath='//*[@class="r-o r-t"]/span') %>%
+    html_nodes(xpath='//*[@class="r-R media-body"]/time/span') %>%
     html_text()
   postdate <- as.list(postdate)
   postprice <- hyperlink %>%
-    html_nodes(xpath='//*[@id="productCardThumbnail"]/dl/dd[1]') %>%
-    html_text() %>%
+    html_nodes(xpath='//*[@data-reactid="1261"]') %>%
+    html_attr("text") %>%
     str_replace("[S$]", "") %>%
     str_replace("[/$]", "") %>%
-    as.numeric(a)
+    as.numeric()
   postprice <- as.list(postprice)
   posttable <- t(rbind(postname, postdate, postprice))
   posttable <- as_tibble(posttable)
@@ -38,12 +37,14 @@ getNextUrl <- function(url) {
 
 scrapeBackApply <- function(url, n) {
   sapply(1:n, function(x) {
-    r <- getPostContent(url)
+    r <- getPostNameDate(url)
     # Overwrite global 'url'
     url <<- getNextUrl(url)
     r
   })
 }
+
+res <- scrapeBackApply(url, 3)
 
 # histogram of price distribution
 ggplot(data=posttable, aes(x=posttable$postprice)) + 
