@@ -6,17 +6,16 @@ library(reshape2)
 
 
 ga_auth(new_user = TRUE)
-## get your accounts
+## get your accounts and view ID
 account_list <- ga_account_list()
 
+view_id <- account_list$viewId[account_list$viewName=='Master Global All markets - Filtered View']
 
-id_hk <- account_list$viewId[account_list$viewName=='HK Web Live View (hkwl hk$)']
+id_combined <- c(view_id)
 
-id_combined <- c(id_hk,id_indo, id_my, id_ph, id_sg, id_tw)
-
+# selecting segments
 my_segments <- ga_segment_list()
 segs <- my_segments$items
-
 
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
@@ -26,34 +25,29 @@ startDate <- "2017-11-13"
 endDate <- "2017-12-03"
 
 # Slide 11 - Current State of Play
-ga_traffic_data_merged <- data.frame()
-
-ga_data_temp_sg <- 
-  google_analytics_4(id_sg, #=This is a (dynamic) ViewID parameter
+# ecommerce conversion rate is used here but other conversion types can be included too
+# other conversion types: goalXXCompletions
+ga_data_currentstate <- 
+  google_analytics_4(view_id, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
-                     metrics = c("sessions", "users"), 
-                     dimensions = c("deviceCategory", "sourceMedium", "date", "campaign"),
-                     segments = c(seg_HDILA_sessions),
+                     metrics = c("sessions", "transactions"), 
+                     dimensions = c("yearMonth", "deviceCategory", "userType"),
+                     segments = c(seg_allUsers),
                      anti_sample = TRUE,
                      max = -1)
-ga_data_temp_sg$id_combined <- id_sg
-ga_data_temp_sg$segment <- "Sessions visited HDILA"
 
-ga_data_temp_my <- 
-  google_analytics_4(id_my, #=This is a (dynamic) ViewID parameter
-                     date_range = c(startDate, endDate), 
-                     metrics = c("sessions", "users"), 
-                     dimensions = c("deviceCategory", "sourceMedium", "date", "campaign"),
-                     segments = c(seg_HDILA_sessions),
-                     anti_sample = TRUE,
-                     max = -1)
-ga_data_temp_my$id_combined <- id_my
-ga_data_temp_my$segment <- "Sessions visited HDILA"
+chartData <- ga_data_currentstate %>%
+  group_by(yearMonth) %>%
+  summarize(Sessions = sum(sessions),
+            transactions = sum(transactions)) %>%
+  mutate(transactionsPerSession = transactions / Sessions) %>%
+  select(-transactions) %>%
+  rename(`Conversion Rate` = transactionsPerSession)
+  
 
 
 
-
-# upload data to Googlesheets
+# upload data to Googlesheets - what if owner of google sheet is different
 my_sheets <- gs_ls()
 myworksheet <- gs_title("Sendo_Measurement Deck")
-gs_edit_cells(myworksheet, ws = "GA Data", input = "cow", anchor = "A3")
+gs_edit_cells(myworksheet, ws = "GA Data", input = chartData, anchor = "A3")
