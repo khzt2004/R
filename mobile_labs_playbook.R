@@ -49,5 +49,8 @@ chartData <- ga_data_currentstate %>%
 
 # upload data to Googlesheets - what if owner of google sheet is different
 my_sheets <- gs_ls()
-myworksheet <- gs_title("Sendo_Measurement Deck")
+myworksheet <- gs_key("1ENbfT76-Q_HcmvzuePMTqQjF3EU4IJxMevJ4rgdNK3c")
+
+# alternative - get access to specified google sheets by title
+# myworksheet <- gs_title("Sendo_Measurement Deck")
 gs_edit_cells(myworksheet, ws = "GA Data", input = chartData, anchor = "A3")
