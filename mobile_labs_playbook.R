@@ -107,6 +107,7 @@ ga_data_currentstate_ecomm_conv <- ga_data_currentstate %>%
   unite(temp, yearMonth, variable) %>%
   spread(temp, value)
 
+# Slide 12 - Your Users Are Now Mobile First
 # Share of Sessions By Platforms
 sessions_deviceSplit <- ga_data_currentstate %>%
   group_by(deviceCategory, yearMonth) %>%
@@ -125,6 +126,12 @@ sessions_deviceSplit_latestmonth <- sessions_deviceSplit %>%
   filter(yearMonth == max(yearMonth))
 
 
+# Slide 13: Mobile vs Desktop Users: Revenue Split
+
+# Value of Site Search Traffic
+
+
+
 # upload data to Googlesheets - what if owner of google sheet is different
 my_sheets <- gs_ls()
 myworksheet <- gs_key("1ENbfT76-Q_HcmvzuePMTqQjF3EU4IJxMevJ4rgdNK3c")
@@ -139,3 +146,6 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_currentstate_txnreven
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_currentstate_ecomm_conv, anchor = "A45") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit, anchor = "J60") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit_latestmonth, anchor = "A78") 
+
+
+gs_edit_cells(myworksheet, ws = "Analysis Steps_Merchandising", input = sessions_deviceSplit_latestmonth, anchor = "J3") 
