@@ -107,6 +107,23 @@ ga_data_currentstate_ecomm_conv <- ga_data_currentstate %>%
   unite(temp, yearMonth, variable) %>%
   spread(temp, value)
 
+# Share of Sessions By Platforms
+sessions_deviceSplit <- ga_data_currentstate %>%
+  group_by(deviceCategory, yearMonth) %>%
+  summarize(devicesessions = sum(sessions)) %>%
+  left_join(chartData, on = "yearMonth") %>%
+  select(-`Conversion Rate`) %>%
+  gather(variable, value, -(yearMonth:deviceCategory)) %>%
+  unite(temp, deviceCategory, variable) %>%
+  spread(temp, value) %>%
+  mutate(desktop = desktop_devicesessions/desktop_Sessions,
+         mobile = mobile_devicesessions/mobile_Sessions,
+         tablet = tablet_devicesessions/tablet_Sessions) %>%
+  select(1, 8:10)
+
+sessions_deviceSplit_latestmonth <- sessions_deviceSplit %>%
+  filter(yearMonth == max(yearMonth))
+
 
 # upload data to Googlesheets - what if owner of google sheet is different
 my_sheets <- gs_ls()
@@ -120,4 +137,5 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = currentState_trafficGrowth_us
 gs_edit_cells(myworksheet, ws = "GA Data", input = currentState_trafficGrowth_all, anchor = "A30") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_currentstate_txnrevenue, anchor = "A39")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_currentstate_ecomm_conv, anchor = "A45") 
-
+gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit, anchor = "J60") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit_latestmonth, anchor = "A78") 
