@@ -23,6 +23,7 @@ stocks_returns_yearly <- sp500 %>%
   mutate(year = year(date)) %>%
   left_join(sp500_keystats_selected, by="symbol")
 
+
 # filter by values
 stocks_returns_yearly_spread <- select(stocks_returns_yearly, -date) %>%
   spread(year, yearly.returns) %>%
@@ -37,7 +38,10 @@ rpivotTable(stocks_returns_yearly_spread)
 
 # get info on nasdaq stocks
 
-nasdaq <- tq_exchange("NASDAQ") %>%
+NYSE <- tq_exchange("NYSE") %>%
+  tq_get(get = "stock.prices")
+
+NASDAQ <- tq_exchange("NASDAQ") %>%
   tq_get(get = "stock.prices")
 
 nasdaq_keystats <- tq_exchange("NASDAQ") %>%
@@ -46,7 +50,7 @@ nasdaq_keystats <- tq_exchange("NASDAQ") %>%
 nasdaq_keystats_selected <- distinct(select(nasdaq, 1:7))
 
 # get NASDAQ annual returns and join with key stats
-nasdaq_stocks_returns_yearly <- nasdaq %>%
+NYSE_NASDAQ_returns_yearly <- rbind(NYSE, NASDAQ) %>%
   group_by(symbol) %>%
   tq_transmute(select     = adjusted, 
                mutate_fun = periodReturn, 
@@ -56,7 +60,7 @@ nasdaq_stocks_returns_yearly <- nasdaq %>%
   left_join(nasdaq_keystats_selected, by="symbol")
 
 # filter by values, gather back for rpivotTable
-nasdaq_returns_yearly_spread <- select(nasdaq_stocks_returns_yearly, -date) %>%
+NYSE_NASDAQ_returns_yearly_spread <- select(NYSE_NASDAQ_returns_yearly, -date) %>%
   spread(year, yearly.returns) %>%
   filter(`2007` != "" 
          & `2014` > 0 
@@ -66,10 +70,10 @@ nasdaq_returns_yearly_spread <- select(nasdaq_stocks_returns_yearly, -date) %>%
   gather(year, yearly.returns, 8:18)
 
 # make pivot table
-rpivotTable(nasdaq_returns_yearly_spread)
+rpivotTable(NYSE_NASDAQ_returns_yearly_spread)
 
 # test filter
-nasdaq_returns_yearly_spread_test <- nasdaq_stocks_returns_yearly %>%
+NYSE_NASDAQ_returns_yearly_spread_test <- NYSE_NASDAQ_returns_yearly %>%
   filter(symbol == "NVDA")
 
 # exporting to excel - create filename
