@@ -1,15 +1,33 @@
 ## setup
 library(googleAnalyticsR)
+library(future.apply)
 
 ## This should send you to your browser to authenticate your email.
 ## Authenticate with an email that has access to the Google Analytics View you want to use.
-ga_auth()
+ga_auth(new_user = TRUE)
+ga_auth(".httr-oauth")
 
 ## get your accounts
 account_list <- ga_account_list()
 
+## setup multisession R for your parallel data fetches 
+plan(multisession)
+
+## the ViewIds to fetch all at once
+gaids <- c(57130184, 67785507,62217977)
+
+my_fetch <- function(x) {
+  google_analytics_4(x, 
+                   date_range = c("2018-01-01","yesterday"), 
+                   metrics = c("sessions"), 
+                   dimensions = c("date","medium"))
+}
+
+## makes 3 API calls at once
+all_data <- future_lapply(gaids, my_fetch)
+
 ## pick a profile with data to query
-ga_id <- account_list[92,'viewId']
+ga_id <- account_list[1123,'viewId']
 
 ## get a list of what metrics and dimensions you can use
 ga_auth()
@@ -62,10 +80,19 @@ segment_def_mktids <- "sessions::condition::ga:dimension2=@mktid"
 seg_obj_mktids <- segment_ga4("test", segment_id = segment_def_mktids)
 
 segment_seq_mktids <- google_analytics_4(ga_id, 
-                                          date_range = c("2017-01-01","2017-03-01"), 
-                                          dimensions = c('source','dimension2'), 
-                                          segments = seg_obj_mktids,
-                                          metrics = c('sessions','bounceRate', 'timeOnPage', 'goal11Completions')
+                                         date_range = c("2017-01-01","2017-03-01"), 
+                                         dimensions = c('source','dimension2'), 
+                                         segments = seg_obj_mktids,
+                                         metrics = c('sessions','bounceRate', 'timeOnPage', 'goal11Completions')
 )
 
 segment_seq_mktids
+
+
+google_analytics_4(ga_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c("2018-01-01","2018-01-30"), 
+                   metrics = c("sessions", "users"), 
+                   dimensions = c("deviceCategory", "sourceMedium", "date"),
+                   #anti_sample = TRUE,
+                   max = -1,
+                   useResourceQuotas = TRUE)
