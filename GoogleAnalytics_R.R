@@ -1,17 +1,17 @@
 ## setup
 library(googleAnalyticsR)
 library(future.apply)
+plan(multisession)
 
 ## This should send you to your browser to authenticate your email.
 ## Authenticate with an email that has access to the Google Analytics View you want to use.
 ga_auth(new_user = TRUE)
-ga_auth(".httr-oauth")
 
 ## get your accounts
 account_list <- ga_account_list()
 
 ## setup multisession R for your parallel data fetches 
-plan(multisession)
+
 
 ## the ViewIds to fetch all at once
 gaids <- c(57130184, 67785507,62217977)
