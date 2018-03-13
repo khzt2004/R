@@ -21,15 +21,36 @@ segs <- my_segments$items
 segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
+se_trans <- segment_element("transactions", 
+                      operator = "GREATER_THAN", 
+                      type = "METRIC", 
+                      comparisonValue = 0, 
+                      scope = "USER")
+
+se_usertype <- segment_element("userType", 
+                       operator = "EXACT", 
+                       type = "DIMENSION", 
+                       expressions = "New Visitor",
+                       scope = "USER")
+
+sv_simple <- segment_vector_simple(list(list(se_trans)))
+sv_simple2 <- segment_vector_simple(list(list(se_usertype)))
+seg_defined <- segment_define(list(sv_simple))
+segment_trans_usertype <- segment_ga4("simple", user_segment = seg_defined)
+
+segment_for_usertype <- "gaid::wZRM4rlFQvqpC-mzu6frBg"
+seg_usertype <- segment_ga4("usertype", segment_id = segment_for_usertype)
+
+
 # enter start date and end date here. Format: yyyy-mm-dd
-startDate <- "2017-11-13"
-endDate <- "2018-01-15"
+startDate <- "2018-01-10"
+endDate <- "2018-01-31"
 
 # Slide 11 - Current State of Play
 # ecommerce conversion rate is used here but other conversion types can be included too
 # other conversion types: goalXXCompletions
 ga_data_currentstate <- 
-  google_analytics_4(view_id, #=This is a (dynamic) ViewID parameter
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                      date_range = c(startDate, endDate), 
                      metrics = c("sessions", "transactions", "transactionRevenue"), 
                      dimensions = c("yearMonth", "deviceCategory", "userType"),
@@ -130,6 +151,15 @@ sessions_deviceSplit_latestmonth <- sessions_deviceSplit %>%
 
 # Value of Site Search Traffic
 
+# slide 73: Drive first time purchaser
+ga_data_repeatpurchase <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate, endDate), 
+                     metrics = c("transactionsPerUser"), 
+                     dimensions = c("userType"),
+                     segments = c(seg_usertype),
+                     anti_sample = TRUE,
+                     max = -1)
 
 
 # upload data to Googlesheets - what if owner of google sheet is different
