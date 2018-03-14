@@ -300,6 +300,18 @@ ga_data_region_previous <-
                    max = -1)
 ga_data_region_previous$timeframe <- "previous"
 
+ga_data_region_combined <- rbind(ga_data_region_current, ga_data_region_previous)
+
+ga_data_region_combined_calc <- ga_data_region_combined %>%
+  group_by(deviceCategory, country, timeframe) %>%
+  filter(deviceCategory == "mobile") %>%
+  mutate(RevenuePerSession = transactionRevenue / sessions) %>%
+  ungroup() %>%
+  select(timeframe, country, sessions, transactionRevenue, RevenuePerSession) %>%
+  gather(metrics, value, 3:5) %>%
+  unite(timeframe_concat, timeframe, metrics, sep = '_') %>%
+  spread(timeframe_concat, value)
+
 # Value of Site Search Traffic
 
 # slide 73: Drive first time purchaser
