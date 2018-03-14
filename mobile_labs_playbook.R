@@ -191,10 +191,114 @@ ga_data_potentialrevenue_table <- ga_data_potentialrevenue %>%
   spread(deviceCategory, value) %>%
   arrange(desc(metric))
 
+mobile_50pct_sessions <- ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "sessions"][1]
+mobile_50pct_CR <- 1.5*(ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "Conversion Rate"][1])
+mobile_50pct_AOV <- ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "Avg Order Value"][1]
+mobile_50pct_Rev <- mobile_50pct_sessions*mobile_50pct_CR*mobile_50pct_AOV
+
+mobile_desktop_parity_sessions <- ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "sessions"][1]
+mobile_desktop_parity_CR <- ga_data_potentialrevenue_table$desktop[ga_data_potentialrevenue_table$metric == "Conversion Rate"][1]
+mobile_desktop_parity_AOV <- ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "Avg Order Value"][1]
+mobile_desktop_parity_Rev <- mobile_desktop_parity_sessions*mobile_desktop_parity_CR*mobile_desktop_parity_AOV
+
+potentialRevenue_cols <- data.frame(metric = c("sessions", "Revenue", "Conversion Rate", "Avg Order Value"), 
+                                    `Increase Mobile Conversion Rate by 50 pct` = c(mobile_50pct_sessions, 
+                                          mobile_50pct_Rev, mobile_50pct_CR, 
+                                          mobile_50pct_AOV), 
+                                    `Bring Mobile to Parity with Desktop` = c(mobile_desktop_parity_sessions, 
+                                                                              mobile_desktop_parity_Rev,
+                                                                              mobile_desktop_parity_CR, 
+                                                                              mobile_desktop_parity_AOV))
+
+ga_data_potentialrevenue_table_merged <- ga_data_potentialrevenue_table %>%
+  left_join(potentialRevenue_cols, by = "metric")
+
 date_range_months <- as.numeric((as.Date(endDate) - as.Date(startDate))/30)
-((298-198)/date_range_months)*12
+mobile_incrementalRev_50pct <- ((mobile_50pct_Rev - ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "Revenue"][1])/date_range_months)*12
+mobile_incrementalRev_parity <- ((mobile_desktop_parity_Rev - ga_data_potentialrevenue_table$mobile[ga_data_potentialrevenue_table$metric == "Revenue"][1])/date_range_months)*12
+
+# Slide 38: What If - Potential incremental revenue from optimising your mobile site
+ga_data_sessions_gender <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions"), 
+                   dimensions = c("deviceCategory", "userGender"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_sessions_age <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions"), 
+                   dimensions = c("deviceCategory", "userAgeBracket"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_sessions_gender_table <- ga_data_sessions_gender %>%
+  select(deviceCategory, userGender, sessions) %>%
+  filter(deviceCategory != 'tablet') %>%
+  group_by(deviceCategory) %>%
+  mutate(sessions_pct = sessions/sum(sessions)) %>%
+  select(deviceCategory, userGender, sessions_pct) %>%
+  spread(userGender, sessions_pct)
+
+ga_data_sessions_age_table <- ga_data_sessions_age %>%
+  select(deviceCategory, userAgeBracket, sessions) %>%
+  filter(deviceCategory != 'tablet') %>%
+  group_by(deviceCategory) %>%
+  mutate(sessions_pct = sessions/sum(sessions)) %>%
+  select(deviceCategory, userAgeBracket, sessions_pct) %>%
+  spread(userAgeBracket, sessions_pct)
 
 
+# Slide 39: Dissecting value based on demographics
+ga_data_sessions_gender_split <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactionRevenue"), 
+                   dimensions = c("deviceCategory", "userGender", "userAgeBracket"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_sessions_gender_split_table <- ga_data_sessions_gender_split %>%
+  mutate(RevenuePerSession = transactionRevenue / sessions) %>%
+  select(deviceCategory, userGender, userAgeBracket, RevenuePerSession) %>%
+  filter(deviceCategory != 'tablet') %>%
+  group_by(deviceCategory) 
+
+ga_data_sessions_gender_split_table_female <- ga_data_sessions_gender_split_table %>%
+  filter(userGender == "female") %>%
+  select(deviceCategory, userAgeBracket, RevenuePerSession) %>%
+  spread(deviceCategory, RevenuePerSession)
+
+ga_data_sessions_gender_split_table_male <- ga_data_sessions_gender_split_table %>%
+  filter(userGender == "male") %>%
+  select(deviceCategory, userAgeBracket, RevenuePerSession) %>%
+  spread(deviceCategory, RevenuePerSession)
+
+# Slide 41: Which regions are your mobile users from?
+ga_data_region_current <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactionRevenue"), 
+                   dimensions = c("deviceCategory", "country"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+ga_data_region_current$timeframe <- "current"
+
+ga_data_region_previous <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(as.Date(startDate) - 365, as.Date(endDate) - 365), 
+                   metrics = c("sessions", "transactionRevenue"), 
+                   dimensions = c("deviceCategory", "country"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+ga_data_region_previous$timeframe <- "previous"
 
 # Value of Site Search Traffic
 
@@ -226,6 +330,12 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit_latestmo
 gs_edit_cells(myworksheet, ws = "GA Data", input = revShare_deviceSplit, anchor = "A85") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = cr_aov_deviceSplit, anchor = "A91") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_potentialrevenue_table, anchor = "A196") 
-
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_potentialrevenue_table_merged, anchor = "A205") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = mobile_incrementalRev_50pct, anchor = "B212") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = mobile_incrementalRev_parity, anchor = "B213") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_table, anchor = "E219")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_age_table, anchor = "E233")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split_table_female, anchor = "E250")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split_table_male, anchor = "E264")
 
 gs_edit_cells(myworksheet, ws = "Analysis Steps_Merchandising", input = sessions_deviceSplit_latestmonth, anchor = "J3") 
