@@ -44,7 +44,7 @@ seg_usertype <- segment_ga4("usertype", segment_id = segment_for_usertype)
 
 # enter start date and end date here. Format: yyyy-mm-dd
 startDate <- "2018-01-10"
-endDate <- "2018-01-31"
+endDate <- "2018-02-05"
 
 # Slide 11 - Current State of Play
 # ecommerce conversion rate is used here but other conversion types can be included too
@@ -148,6 +148,53 @@ sessions_deviceSplit_latestmonth <- sessions_deviceSplit %>%
 
 
 # Slide 13: Mobile vs Desktop Users: Revenue Split
+revShare_deviceSplit <- ga_data_currentstate %>%
+  group_by(deviceCategory) %>%
+  summarise(transactionRevenue = sum(transactionRevenue)) %>%
+  mutate(percentRev = transactionRevenue / sum(transactionRevenue))
+
+cr_aov_deviceSplit <- ga_data_currentstate %>%
+  group_by(deviceCategory) %>%
+  summarise(CR = sum(transactions) / sum(sessions),
+            AOV = sum(transactionRevenue) / sum(transactions))
+         
+# Slide 14: Impact of Mobile vs Desktop in Purchase Paths are Different
+ga_data_shoppingstage <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "pageViews"), 
+                   dimensions = c("shoppingStage", "deviceCategory"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_shoppingstage_filter <- ga_data_shoppingstage %>%
+  filter(shoppingStage == "ADD_TO_CART" | shoppingStage == "CHECKOUT")
+
+# Slide 17: What If - Potential incremental revenue from optimising your mobile site
+ga_data_potentialrevenue <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactions", "transactionRevenue"), 
+                   dimensions = c("deviceCategory"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_potentialrevenue_table <- ga_data_potentialrevenue %>%
+  mutate(`Conversion Rate` = transactions / sessions,
+         `Avg Order Value` = transactionRevenue / transactions) %>%
+  select( 1:4, Revenue = transactionRevenue, 5:7 ) %>%
+  filter(deviceCategory != 'tablet') %>%
+  select(deviceCategory, sessions, `Conversion Rate`, `Avg Order Value`, Revenue) %>%
+  gather(key = metric, value = value, 2:5) %>%
+  spread(deviceCategory, value) %>%
+  arrange(desc(metric))
+
+date_range_months <- as.numeric((as.Date(endDate) - as.Date(startDate))/30)
+((298-198)/date_range_months)*12
+
+
 
 # Value of Site Search Traffic
 
@@ -176,6 +223,9 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_currentstate_txnreven
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_currentstate_ecomm_conv, anchor = "A45") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit, anchor = "J60") 
 gs_edit_cells(myworksheet, ws = "GA Data", input = sessions_deviceSplit_latestmonth, anchor = "A78") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = revShare_deviceSplit, anchor = "A85") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = cr_aov_deviceSplit, anchor = "A91") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_potentialrevenue_table, anchor = "A196") 
 
 
 gs_edit_cells(myworksheet, ws = "Analysis Steps_Merchandising", input = sessions_deviceSplit_latestmonth, anchor = "J3") 
