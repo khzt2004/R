@@ -310,7 +310,53 @@ ga_data_region_combined_calc <- ga_data_region_combined %>%
   select(timeframe, country, sessions, transactionRevenue, RevenuePerSession) %>%
   gather(metrics, value, 3:5) %>%
   unite(timeframe_concat, timeframe, metrics, sep = '_') %>%
-  spread(timeframe_concat, value)
+  spread(timeframe_concat, value) %>%
+  mutate(sessions_pct_change = current_sessions / previous_sessions) %>%
+  select(country, current_RevenuePerSession, sessions_pct_change) %>%
+  filter(current_RevenuePerSession > 0)
+
+
+# Slide 42: Reach your users at the right time
+ga_data_hourday_device <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions"), 
+                   dimensions = c("deviceCategory", "hour", "dayOfWeekName"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_hourday_device_table <- ga_data_hourday_device %>%
+  filter(deviceCategory != "tablet") %>%
+  group_by(deviceCategory, hour) %>%
+  summarise(sessions= sum(sessions)) %>%
+  spread(deviceCategory, sessions) %>%
+  mutate(sessionbyHour = desktop + mobile) %>%
+  mutate(desktop_pct = desktop / sessionbyHour,
+         mobile_pct = mobile / sessionbyHour) %>%
+  select(hour, desktop = desktop_pct, mobile = mobile_pct)
+
+ga_data_weekday_device_table <- ga_data_hourday_device %>%
+  filter(deviceCategory != "tablet") %>%
+  group_by(deviceCategory, dayOfWeekName) %>%
+  summarise(sessions= sum(sessions)) %>%
+  spread(deviceCategory, sessions) %>%
+  mutate(sessionbyDayofWeek = desktop + mobile) %>%
+  mutate(desktop_pct = desktop / sessionbyDayofWeek,
+         mobile_pct = mobile / sessionbyDayofWeek) %>%
+  select(dayOfWeekName, desktop = desktop_pct, mobile = mobile_pct)
+
+
+# Slide 43: Session Signals of Valuable Users
+ga_data_pageDepth_CR <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("transactionsPerSession"), 
+                   dimensions = c("pageDepth"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
 
 # Value of Site Search Traffic
 
@@ -349,5 +395,9 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_table
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_age_table, anchor = "E233")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split_table_female, anchor = "E250")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split_table_male, anchor = "E264")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_hourday_device_table, anchor = "E300")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_weekday_device_table, anchor = "E327")
+
+
 
 gs_edit_cells(myworksheet, ws = "Analysis Steps_Merchandising", input = sessions_deviceSplit_latestmonth, anchor = "J3") 
