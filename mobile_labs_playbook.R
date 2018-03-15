@@ -357,6 +357,10 @@ ga_data_pageDepth_CR <-
                    anti_sample = TRUE,
                    max = -1)
 
+ga_data_pageDepth_CR_table <- ga_data_pageDepth_CR %>%
+  mutate(pageDepth = as.numeric(pageDepth)) %>%
+  filter(pageDepth <= 25)
+
 
 # Value of Site Search Traffic
 
