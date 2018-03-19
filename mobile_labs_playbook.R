@@ -584,8 +584,10 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_weekday_device_table,
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageDepth_CR_table, anchor = "E340")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessionDuration_CR_table, anchor = "H340")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sitesearch_value_table, anchor = "E371")
-gs_edit_cells(myworksheet, ws = "SiteSearchOptimisation", input = ga_data_searchterms_tablefiltered, anchor = "A1")
-gs_edit_cells(myworksheet, ws = "productListViewsCTR", input = ga_data_productName_table, anchor = "A1")
+# this needs to be optimised as large amounts of data will vastly slow down google sheets API
+# gs_edit_cells(myworksheet, ws = "SiteSearchOptimisation", input = ga_data_searchterms_tablefiltered, anchor = "A1")
+# this needs to be optimised as large amounts of data will vastly slow down google sheets API
+# gs_edit_cells(myworksheet, ws = "productListViewsCTR", input = ga_data_productName_table, anchor = "A1")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_catalogposition_table, anchor = "E449")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_daysSinceLastSession_table, anchor = "E473")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_freq_CR_table, anchor = "E508")
