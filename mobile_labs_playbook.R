@@ -11,7 +11,7 @@ ga_auth(new_user = TRUE)
 account_list <- ga_account_list()
 
 view_id <- account_list$viewId[account_list$viewName=='Master Global All markets - Filtered View']
-
+view_id <- account_list$viewId[account_list$viewName=='Roll-up All (filtered)']
 id_combined <- c(view_id)
 
 # selecting segments
@@ -351,7 +351,7 @@ ga_data_weekday_device_table <- ga_data_hourday_device %>%
 ga_data_pageDepth_CR <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
-                   metrics = c("transactionsPerSession"), 
+                   metrics = c("transactionsPerSession", "sessionDuration"), 
                    dimensions = c("pageDepth"),
                    segments = c(seg_allUsers),
                    anti_sample = TRUE,
@@ -359,10 +359,128 @@ ga_data_pageDepth_CR <-
 
 ga_data_pageDepth_CR_table <- ga_data_pageDepth_CR %>%
   mutate(pageDepth = as.numeric(pageDepth)) %>%
-  filter(pageDepth <= 25)
+  select(pageDepth, transactionsPerSession) %>%
+  filter(pageDepth <= 25) %>%
+  arrange(pageDepth)
+
+ga_data_sessionDuration_CR_table <- ga_data_pageDepth_CR %>%
+  mutate(pageDepth = as.numeric(pageDepth)) %>%
+  select(sessionDuration, transactionsPerSession) %>%
+  filter(sessionDuration < 5000)
 
 
-# Value of Site Search Traffic
+# Slide 61: Site Search Optimisation
+ga_data_sitesearch_value <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactionRevenue"), 
+                   dimensions = c("searchUsed"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_searchterms <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("productListViews", "productListCTR"), 
+                   dimensions = c("searchKeyword"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_sitesearch_value_table <- ga_data_sitesearch_value %>%
+  mutate(revenuePerSession = transactionRevenue / sessions,
+         shareofSessions = sessions/sum(sessions)) %>%
+  select(searchUsed, `Per Session Value` = revenuePerSession, `Share of Sessions` = shareofSessions)
+
+ga_data_searchterms_table <- ga_data_searchterms %>%
+  mutate(productListClicks = productListViews * productListCTR)
+
+pdt_listviews_avg <- sum(ga_data_searchterms_table$productListViews) / length(ga_data_searchterms_table$searchKeyword)
+pdt_listviews_50pct <- quantile(ga_data_searchterms_table$productListViews, 0.5)
+pdt_listCTR_avg <- sum(ga_data_searchterms_table$productListClicks) / length(ga_data_searchterms_table$searchKeyword)
+pdt_listCTR_50pct <- quantile(ga_data_searchterms_table$productListCTR, 0.5)
+
+ga_data_searchterms_tablefiltered <- ga_data_searchterms_table %>%
+  select(searchKeyword, productListViews, productListCTR)
+
+
+# Slide 65: Merchandising Optimisation: Catalog Engagement
+ga_data_productName <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("productListViews", "productListCTR"), 
+                   dimensions = c("productName"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_productName_table <- ga_data_productName %>%
+  select(productName, productListViews, productListCTR)
+
+# sample scatter plot
+g<-ggplot(data = ga_data_productName_table, aes(x = productListViews, y = productListCTR)) + 
+  geom_point(size=3, colour = "#D55E00")
+g           
+
+
+# Slide 67: Merchandising Optimisation: Product Engagement
+ga_data_productDetail <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("productDetailViews", "productAddsToCart"), 
+                   dimensions = c("productName"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_productDetail_table <- ga_data_productDetail %>%
+  mutate(addtoCart_rate = productAddsToCart/productDetailViews) %>%
+  filter(addtoCart_rate >= 0 & addtoCart_rate < 2)
+
+# sample scatter plot
+g1<-ggplot(data = ga_data_productDetail_table, aes(x = productDetailViews, y = addtoCart_rate)) + 
+  geom_point(size=3, colour = "#D55E00")
+g1  
+
+
+# Slide 68: How do Sendo Users Shop on Catalog Pages?
+ga_data_catalogposition <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("productListViews", "productAddsToCart", "productListClicks"), 
+                   dimensions = c("productListPosition"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_catalogposition_table <- ga_data_catalogposition %>%
+  filter(productListPosition != "(not set)") %>%
+  mutate(productListPosition = as.numeric(productListPosition)) %>%
+  mutate(productListPositionBin = case_when(productListPosition >= 0 & productListPosition <= 10 ~ "0-10",
+                                            productListPosition >= 11 & productListPosition <= 20 ~ "11-20",
+                                            productListPosition >= 21 & productListPosition <= 30 ~ "21-30",
+                                            productListPosition >= 31 & productListPosition <= 50 ~ "31-50",
+                                            productListPosition >= 51 & productListPosition <= 70 ~ "51-70",
+                                            productListPosition >= 71 & productListPosition <= 100 ~ "71-100",
+                                            productListPosition >= 101 ~ "> 100")) %>%
+  group_by(productListPositionBin) %>%
+  summarise(productListViews = sum(productListViews),
+            productAddsToCart = sum(productAddsToCart),
+            productListClicks = sum(productListClicks)) %>%
+  mutate(productListViewTotal = productListViews[1],
+         cumulative_shareofViews = productListViews / productListViewTotal,
+            addtoCart_rate = productAddsToCart/productListViews,
+            productCTR = productListClicks /productListViews) %>%
+  select(productListPositionBin,
+         productListViews,
+         productAddsToCart,
+         productListClicks,
+         productListViewTotal,
+         `Share of Views` = cumulative_shareofViews,
+         `A2C` = addtoCart_rate,
+         CTR = productCTR) %>%
+  arrange(productListPositionBin)
 
 # slide 73: Drive first time purchaser
 ga_data_repeatpurchase <- 
@@ -401,7 +519,12 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split_table_male, anchor = "E264")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_hourday_device_table, anchor = "E300")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_weekday_device_table, anchor = "E327")
-
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageDepth_CR_table, anchor = "E340")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessionDuration_CR_table, anchor = "H340")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sitesearch_value_table, anchor = "E371")
+gs_edit_cells(myworksheet, ws = "SiteSearchOptimisation", input = ga_data_searchterms_tablefiltered, anchor = "A1")
+gs_edit_cells(myworksheet, ws = "productListViewsCTR", input = ga_data_productName_table, anchor = "A1")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_catalogposition_table, anchor = "E449")
 
 
 gs_edit_cells(myworksheet, ws = "Analysis Steps_Merchandising", input = sessions_deviceSplit_latestmonth, anchor = "J3") 
