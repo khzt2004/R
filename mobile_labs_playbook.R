@@ -482,6 +482,58 @@ ga_data_catalogposition_table <- ga_data_catalogposition %>%
          CTR = productCTR) %>%
   arrange(productListPositionBin)
 
+# Slide 71: When To Re-Engage Your New Users?
+ga_data_daysSinceLastSession <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions"), 
+                   dimensions = c("sessionCount", "daysSinceLastSession"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_daysSinceLastSession_table <- ga_data_daysSinceLastSession %>%
+  mutate(sessionCount = as.numeric(sessionCount),
+         daysSinceLastSession = as.numeric(daysSinceLastSession),
+         weight = daysSinceLastSession * sessions) %>%
+  group_by(sessionCount) %>%
+  summarise(sessions = sum(sessions),
+            avgDaysSinceLastSession = sum(weight)/sum(sessions)) %>%
+  filter(sessionCount <= 30)
+
+# Slide 72: Valuable Users by Long-term Behaviour
+ga_data_freq_CR <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactions"), 
+                   dimensions = c("sessionCount"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_recency_CR <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactions"), 
+                   dimensions = c("daysSinceLastSession"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_freq_CR_table <- ga_data_freq_CR %>%
+  mutate(CR = transactions / sessions, sessionCount = as.numeric(sessionCount)) %>%
+  select(sessionCount, CR) %>%
+  filter(sessionCount <= 35) %>%
+  arrange(sessionCount)
+
+
+ga_data_recency_CR_table <- ga_data_recency_CR %>%
+  mutate(CR = transactions / sessions, daysSinceLastSession = as.numeric(daysSinceLastSession)) %>%
+  select(`Days Since Last Session` = daysSinceLastSession, CR) %>%
+  filter(`Days Since Last Session` <= 30) %>%
+  arrange(`Days Since Last Session`)
+
+
 # slide 73: Drive first time purchaser
 ga_data_repeatpurchase <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
@@ -525,6 +577,6 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sitesearch_value_tabl
 gs_edit_cells(myworksheet, ws = "SiteSearchOptimisation", input = ga_data_searchterms_tablefiltered, anchor = "A1")
 gs_edit_cells(myworksheet, ws = "productListViewsCTR", input = ga_data_productName_table, anchor = "A1")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_catalogposition_table, anchor = "E449")
-
-
-gs_edit_cells(myworksheet, ws = "Analysis Steps_Merchandising", input = sessions_deviceSplit_latestmonth, anchor = "J3") 
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_daysSinceLastSession_table, anchor = "E473")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_freq_CR_table, anchor = "E508")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_recency_CR_table, anchor = "H508")
