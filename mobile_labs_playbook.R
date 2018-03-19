@@ -41,6 +41,11 @@ segment_trans_usertype <- segment_ga4("simple", user_segment = seg_defined)
 segment_for_usertype <- "gaid::wZRM4rlFQvqpC-mzu6frBg"
 seg_usertype <- segment_ga4("usertype", segment_id = segment_for_usertype)
 
+segment_def_for_call <- "sessions::condition::ga:deviceCategory==desktop"
+
+## make the v3 segment object in the v4 segment object:
+seg_obj_desktop <- segment_ga4("Desktop", segment_id = segment_def_for_call)
+
 
 # enter start date and end date here. Format: yyyy-mm-dd
 startDate <- "2018-01-10"
@@ -171,7 +176,7 @@ ga_data_shoppingstage <-
 ga_data_shoppingstage_filter <- ga_data_shoppingstage %>%
   filter(shoppingStage == "ADD_TO_CART" | shoppingStage == "CHECKOUT")
 
-# Slide 17: What If - Potential incremental revenue from optimising your mobile site
+# Slide 17 & 18: What If - Potential incremental revenue from optimising your mobile site
 ga_data_potentialrevenue <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
@@ -404,6 +409,10 @@ pdt_listCTR_50pct <- quantile(ga_data_searchterms_table$productListCTR, 0.5)
 ga_data_searchterms_tablefiltered <- ga_data_searchterms_table %>%
   select(searchKeyword, productListViews, productListCTR)
 
+# sample scatter plot
+searchterm_scatter <-ggplot(data = ga_data_searchterms_tablefiltered, aes(x = productListViews, y = productListCTR)) + 
+  geom_point(size=3, colour = "#D55E00")
+searchterm_scatter
 
 # Slide 65: Merchandising Optimisation: Catalog Engagement
 ga_data_productName <- 
@@ -444,13 +453,14 @@ g1<-ggplot(data = ga_data_productDetail_table, aes(x = productDetailViews, y = a
 g1  
 
 
+
 # Slide 68: How do Sendo Users Shop on Catalog Pages?
 ga_data_catalogposition <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
                    metrics = c("productListViews", "productAddsToCart", "productListClicks"), 
                    dimensions = c("productListPosition"),
-                   segments = c(seg_allUsers),
+                   segments = seg_obj_desktop,
                    anti_sample = TRUE,
                    max = -1)
 
@@ -580,3 +590,5 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_catalogposition_table
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_daysSinceLastSession_table, anchor = "E473")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_freq_CR_table, anchor = "E508")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_recency_CR_table, anchor = "H508")
+
+
