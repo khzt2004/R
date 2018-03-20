@@ -11,6 +11,7 @@
 # https://rstudio-pubs-static.s3.amazonaws.com/267119_9a033b870b9641198b19134b7e61fe56.html -> ECLAT
 # https://benjnmoss.wordpress.com/2017/02/13/market-basket-analysis-in-alteryx/
 # https://synerise.com/data-mining-how-to-analyze-customers-market-baskets-to-increase-sales/#
+# http://r-train.ru/apriori-tips-and-tricks/
 
 library(arules)  # association rules
 library(arulesViz)  # data visualization of association rules
@@ -21,7 +22,7 @@ library(lubridate)
 # read sample data into dataframe
 raw_data <- read_csv("https://raw.githubusercontent.com/kh7393/Market-Basket/master/Online%20Retail_new.csv")
 raw_data <- raw_data %>%
-  mutate(InvoiceDate = format(InvoiceDate, "%H:%M:%S"))
+  mutate(InvoiceDate = format(InvoiceDate, "%H:%M:%S")) %>%
   mutate(InvoiceDate = make_datetime(day, month, year, hour, minute))
 
 # show countries
@@ -105,6 +106,8 @@ plot(second.rules, method="grouped",
 # dev.off()    
 
 # this needs fixing
+top.second.rules <- head(sort(second.rules, decreasing = TRUE, by = "lift"), 10)
+
 pdf(file="fig_market_basket_farmer_rules.pdf", width = 11, height = 8.5)
 plot(top.second.rules, method="graph", 
      control=list(type="items"), 
