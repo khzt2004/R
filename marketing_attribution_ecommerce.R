@@ -63,7 +63,8 @@ ggplot(result, aes(channel, value)) +
   geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
   scale_fill_viridis(discrete=TRUE) +
   xlab("") + ylab("Conversions") +
-  guides(fill = guide_legend(title = "Model"))
+  guides(fill = guide_legend(title = "Model")) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))
 
 # build another barplot to see deviations
 result = merge(basic_model,dynamic_model, by = "channel_name")
