@@ -27,6 +27,8 @@ library(viridis)
 # simulate some customer journeys
 mydata = data.frame(userid = sample(c(1:1000), 5000, replace = TRUE),
                     date = sample(c(1:32), 5000, replace = TRUE),
+                    revenue = sample(c(0:9), 5000, replace = TRUE,
+                                     prob = c(0.1, 0.15, 0.05, 0.07, 0.11, 0.07, 0.13, 0.1, 0.06, 0.16)),
                     channel = sample(c(0:9), 5000, replace = TRUE,
                                      prob = c(0.1, 0.15, 0.05, 0.07, 0.11, 0.07, 0.13, 0.1, 0.06, 0.16)))
 mydata$date = as.Date(mydata$date, origin = "2017-01-01")
@@ -37,30 +39,55 @@ mydata <- read_csv("results.csv")
 # create sequence per user
 seq = mydata %>%
   group_by(userid) %>%
-  summarise(path = as.character(list(Channel)))
+  summarise(path = as.character(list(channel)))
+
+seqRev <- mydata %>%
+  group_by(userid) %>%
+  summarise(revenue = sum(revenue))
+
+seq_merged <- left_join(seq, seqRev, by = "userid")
   
 
 # group identical paths and add up conversions
-seq = seq %>%
+seq = seq_merged %>%
   group_by(path) %>%
-  summarise(total_conversions = n())
+  summarise(revenue = sum(revenue), 
+            total_conversions = n())
 
 # clean paths
 seq$path = gsub("c\\(|)|\"|([\n])","", seq$path)
 seq$path = gsub(",","\\1 \\2>", seq$path)
 
 # run models
-basic_model = heuristic_models(seq, "path", "total_conversions")
-dynamic_model = markov_model(seq, "path", "total_conversions")
+basic_model = heuristic_models(seq, "path", "total_conversions", var_value='revenue')
+# dynamic_model = markov_model(seq, "path", "total_conversions")
 
 # build barplot
-result = merge(basic_model,dynamic_model, by = "channel_name")
-names(result) = c("channel","first","last","linear","markov")
+#result = merge(basic_model,dynamic_model, by = "channel_name")
+#names(result) = c("channel","first","last","linear","markov")
 
-result = melt(result, id.vars="channel")
+result = melt(basic_model, id.vars="channel_name")
+# result for conversions
+basic_model_conv <- basic_model %>%
+  select(channel_name, first_touch_conversions, last_touch_conversions, linear_touch_conversions)
+result = melt(basic_model_conv, id.vars="channel_name")
 
-ggplot(result, aes(channel, value)) +
+ggplot(result, aes(channel_name, value)) +
   geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+  ggtitle('Total Conversions') +
+  scale_fill_viridis(discrete=TRUE) +
+  xlab("") + ylab("Conversions") +
+  guides(fill = guide_legend(title = "Model")) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))
+
+# result for revenue
+basic_model_value <- basic_model %>%
+  select(channel_name, first_touch_value, last_touch_value, linear_touch_value)
+result_revenue = melt(basic_model_value, id.vars="channel_name")
+
+ggplot(result_revenue, aes(channel_name, value)) +
+  geom_bar(aes(fill = variable), position = "dodge", stat="identity") +
+  ggtitle('Total Value') +
   scale_fill_viridis(discrete=TRUE) +
   xlab("") + ylab("Conversions") +
   guides(fill = guide_legend(title = "Model")) +
