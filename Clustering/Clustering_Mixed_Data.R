@@ -4,6 +4,7 @@ library(dplyr) # for data cleaning
 library(ISLR) # for college dataset
 library(cluster) # for gower similarity and pam
 library(Rtsne) # for t-SNE plot
+library(tidyverse)
 
 # https://dpmartin42.github.io/posts/r/cluster-mixed-types
 
@@ -98,6 +99,10 @@ tsne_data %>%
   left_join(college_clean, by = "name") %>%
   collect %>%
   .[["name"]]
+
+
+college_final_data <- college_clean %>%
+  left_join(tsne_data[, c("cluster", "name")], by = "name")
 
 
 
