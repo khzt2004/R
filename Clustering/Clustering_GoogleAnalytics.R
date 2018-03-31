@@ -1,5 +1,6 @@
 library(factoextra)
 library(tidyverse)
+# https://rpubs.com/gabrielmartos/ClusterAnalysis
 
 # Load data
 data("USArrests")
@@ -49,6 +50,4 @@ fviz_cluster(km.res, data = dd,
              repel = TRUE, # Avoid label overplotting (slow)
              ggtheme = theme_minimal()
 )
-
-
 
