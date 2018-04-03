@@ -6,52 +6,52 @@ library (lubridate)
 project <- "unified-welder-172709"
 targets_dataset <- "TH_Marketing_Performance_Dashboard_Targets"
 
-# get the data by each date
+# get targets data by date
 get_target_query <- paste0("SELECT
-                              Country, Year, Month,Channel,Category,Partnership,Metric,Target
-                              FROM (SELECT
-                              Country,Year,Month,Channel,Category,Partnership, 'NMV' AS Metric,
-                              ROUND(FLOAT(SUM(NMV)),2) AS Target
-                              FROM
-                              TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-                              GROUP BY 1,2,3,4,5,6),
-                              (SELECT
-                              Country,Year,Month,Channel,Category,Partnership,'Item' AS Metric,
-                              ROUND(SUM(Item),2) AS Target
-                              FROM
-                              TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-                              GROUP BY 1,2,3,4,5,6),
-                              (SELECT
-                              Country,Year,Month,Channel,Category,Partnership,
-                              'ASP' AS Metric,
-                              ROUND(FLOAT(SUM(ASP)),2) AS Target
-                              FROM
-                              TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-                              GROUP BY 1,2,3,4,5,6),
-                              (SELECT
-                              Country,Year,Month,Channel,Category,Partnership,
-                              'PV' AS Metric,ROUND(FLOAT(SUM(PV)),2) AS Target
-                              FROM
-                              TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-                              GROUP BY 1,2,3,4,5,6),
-                              (SELECT
-                              Country,Year,Month,Channel,Category,Partnership,
-                              'CR' AS Metric,ROUND(SUM(FLOAT(CR)),2) AS Target
-                              FROM
-                              TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-                              GROUP BY 1,2,3,4,5,6 ),
-                              (SELECT
-                              Country,Year,Month,Channel,Category,Partnership,
-                              'NC' AS Metric,ROUND(FLOAT(SUM(NC)),2) AS Target
-                              FROM
-                              TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-                              GROUP BY 1,2,3,4,5,6)
-                              ")
+Country, Year, Month,Channel,Category,Partnership,Metric,Target
+FROM (SELECT
+Country,Year,Month,Channel,Category,Partnership, 'NMV' AS Metric,
+ROUND(FLOAT(SUM(NMV)),2) AS Target
+FROM
+TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
+GROUP BY 1,2,3,4,5,6),
+(SELECT
+Country,Year,Month,Channel,Category,Partnership,'Item' AS Metric,
+ROUND(SUM(Item),2) AS Target
+FROM
+TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
+GROUP BY 1,2,3,4,5,6),
+(SELECT
+Country,Year,Month,Channel,Category,Partnership,
+'ASP' AS Metric,
+ROUND(FLOAT(SUM(ASP)),2) AS Target
+FROM
+TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
+GROUP BY 1,2,3,4,5,6),
+(SELECT
+Country,Year,Month,Channel,Category,Partnership,
+'PV' AS Metric,ROUND(FLOAT(SUM(PV)),2) AS Target
+FROM
+TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
+GROUP BY 1,2,3,4,5,6),
+(SELECT
+Country,Year,Month,Channel,Category,Partnership,
+'CR' AS Metric,ROUND(SUM(FLOAT(CR)),2) AS Target
+FROM
+TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
+GROUP BY 1,2,3,4,5,6 ),
+(SELECT
+Country,Year,Month,Channel,Category,Partnership,
+'NC' AS Metric,ROUND(FLOAT(SUM(NC)),2) AS Target
+FROM
+TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
+GROUP BY 1,2,3,4,5,6)
+")
   
-  target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf)
+target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf)
   
-  
-  get_actuals_query <- paste0("SELECT Date_of_Week, year(Date_of_Week) as Year,
+# get actuals data by date 
+get_actuals_query <- paste0("SELECT Date_of_Week, year(Date_of_Week) as Year,
 case when month(Date_of_Week) = 1 then 'Jan'
 when month(Date_of_Week) = 2 then 'Feb'
 when month(Date_of_Week) = 3 then 'Mar'
@@ -103,7 +103,7 @@ GROUP BY Country,Year,Month,Category,
 # Sub_Category,
 Date_of_Week, Channel,Brand,Partnership")
   
-  actuals_data <- query_exec(get_actuals_query, project, destination_table = NULL, max_pages = Inf)
+actuals_data <- query_exec(get_actuals_query, project, destination_table = NULL, max_pages = Inf)
 
 
 # target_data <- read_csv("TH_Monthly_Targets.csv")
