@@ -64,7 +64,8 @@ when month(Date_of_Week) = 9 then 'Sep'
 when month(Date_of_Week) = 10 then 'Oct'
 when month(Date_of_Week) = 11 then 'Nov'
 when month(Date_of_Week) = 12 then 'Dec'
-end as Month,Channel,Brand,Country,Category,
+end as Month,Channel,Brand,Country,
+case when Category is null then 'Others' else Category end as Category,
 # Sub_Category,
 Partnership,SUM(NMV) as NMV,sum(Items) as Item,(sum(NMV)/sum(Items)) as ASP,
 sum(PV) as PV,
@@ -124,7 +125,9 @@ combined_Target_Ach_master <- shopee_lazada_master %>%
   mutate(pct_Achieved = Achieved/Target) %>%
   select("Date_of_Week","Year","Month","Channel","Brand","Country", "Category_Targets" = Category.x,
          "Partnership", "Metric", "Achieved", "Category_Actuals" = Category.y, "Target",
-         "pct_Achieved")
+         "pct_Achieved") %>%
+  mutate(Category_Actuals = case_when(is.na(Category_Actuals) ~ "Others",
+         TRUE ~ as.character(Category_Actuals)))
 
 
 
