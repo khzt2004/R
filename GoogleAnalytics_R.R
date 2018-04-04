@@ -1,30 +1,46 @@
-## setup
 library(googleAnalyticsR)
 library(future.apply)
-plan(multisession)
-
-## This should send you to your browser to authenticate your email.
-## Authenticate with an email that has access to the Google Analytics View you want to use.
-ga_auth(new_user = TRUE)
-
-## get your accounts
-account_list <- ga_account_list()
+library(tidyverse)
 
 ## setup multisession R for your parallel data fetches 
+plan(multisession)
+account_list <- ga_account_list()
+account_list[1123,'viewId']
 
+Sys.setenv(GA_AUTH_FILE = "C:/Users/User/Documents/.httr-oauth")
+# need alternative for mac
 
 ## the ViewIds to fetch all at once
-gaids <- c(57130184, 67785507,62217977)
+gaids <- c(account_list[2122,'viewId'], account_list[2125,'viewId'], account_list[2128,'viewId'])
+
+# selecting segments
+my_segments <- ga_segment_list()
+segs <- my_segments$items
+
+segment_for_allusers <- "gaid::-1"
+seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
 my_fetch <- function(x) {
-  google_analytics_4(x, 
+  google_analytics(x, 
                    date_range = c("2018-01-01","yesterday"), 
-                   metrics = c("sessions"), 
-                   dimensions = c("date","medium"))
+                   metrics = c("sessions", "transactions", "transactionRevenue"), 
+                   dimensions = c("yearMonth", "deviceCategory", "userType"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
 }
 
 ## makes 3 API calls at once
 all_data <- future_lapply(gaids, my_fetch)
+df1 <- data.frame(all_data[1])
+df1 <- df1 %>% mutate(viewID = account_list[2122,'viewName'])
+df2 <- data.frame(all_data[2])
+df2 <- df2 %>% mutate(viewID = account_list[2125,'viewName'])
+df3 <- data.frame(all_data[3])
+df3 <- df3 %>% mutate(viewID = account_list[2128,'viewName'])
+df_all <- rbind(df1,df2,df3)
+
+
 
 ## pick a profile with data to query
 ga_id <- account_list[1123,'viewId']
@@ -96,3 +112,4 @@ google_analytics_4(ga_id, #=This is a (dynamic) ViewID parameter
                    #anti_sample = TRUE,
                    max = -1,
                    useResourceQuotas = TRUE)
+
