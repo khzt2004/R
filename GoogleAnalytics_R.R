@@ -4,11 +4,15 @@ library(tidyverse)
 
 ## setup multisession R for your parallel data fetches 
 plan(multisession)
-account_list <- ga_account_list()
-account_list[1123,'viewId']
+
+# login as new_user = TRUE if switching accounts. Otherwise do not set new_user = true
+ga_auth()
+# ga_auth(new_user = TRUE)
 
 Sys.setenv(GA_AUTH_FILE = "C:/Users/User/Documents/.httr-oauth")
 # need alternative for mac
+
+account_list <- ga_account_list()
 
 ## the ViewIds to fetch all at once
 gaids <- c(account_list[2122,'viewId'], account_list[2125,'viewId'], account_list[2128,'viewId'])
