@@ -146,7 +146,7 @@ get_actuals_subcat_query <- paste0("SELECT Date_of_Week, year(Date_of_Week) as Y
                             case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
                             'MP' as Partnership,
                             # need retail/MP partnership
-                            date(End_Date) AS Date_of_Week,sum(float(Total_Quantity_Sold)) as Items,
+                            date(End_Date) AS Date_of_Week, sum(float(Total_Quantity_Sold)) as Items,
                             SUM(Completed_Sales_This_Week_EUR) AS NMV, sum(Total_Product_Views) as PV,
                             (SUM(Completed_Sales_This_Week_EUR) / sum(Total_Quantity_Sold)) as ASP ,
                             sum(Completed_Orders_This_Week) / sum(Total_Product_Views) as CR
