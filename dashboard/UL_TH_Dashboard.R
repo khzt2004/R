@@ -229,8 +229,8 @@ combined_Target_Ach_master <- shopee_lazada_master %>%
                                        "Partnership", 
                                        "Metric")) %>%
   mutate(pct_Achieved = Achieved/Target) %>%
-  select("Date_of_Week","Year","Month","Channel","Brand","Country", "Category_Targets" = Category.x,
-         "Partnership", "Metric", "Achieved", "Category_Actuals" = Category.y, "Target",
+  select("Date_of_Week","Year","Month","Channel","Brand","Country", "Category_Actuals" = Category.x,
+         "Partnership", "Metric", "Achieved", "Category_Targets" = Category.y, "Target",
          "pct_Achieved") %>%
   mutate(Category_Actuals = case_when(is.na(Category_Actuals) ~ "Others",
          TRUE ~ as.character(Category_Actuals)))
