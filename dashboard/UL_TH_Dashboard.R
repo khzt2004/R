@@ -9,158 +9,209 @@ targets_dataset <- "TH_Marketing_Performance_Dashboard_Targets"
 # get targets data by date
 get_target_query <- paste0("SELECT
 Country, Year, Month,Channel,Category,Partnership,Metric,Target
-FROM (SELECT
-Country,Year,Month,Channel,Category,Partnership, 'NMV' AS Metric,
-ROUND(FLOAT(SUM(NMV)),2) AS Target
-FROM
-TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-GROUP BY 1,2,3,4,5,6),
-(SELECT
-Country,Year,Month,Channel,Category,Partnership,'Item' AS Metric,
-ROUND(SUM(Item),2) AS Target
-FROM
-TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-GROUP BY 1,2,3,4,5,6),
-(SELECT
-Country,Year,Month,Channel,Category,Partnership,
-'ASP' AS Metric,
-ROUND(FLOAT(SUM(ASP)),2) AS Target
-FROM
-TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-GROUP BY 1,2,3,4,5,6),
-(SELECT
-Country,Year,Month,Channel,Category,Partnership,
-'PV' AS Metric,ROUND(FLOAT(SUM(PV)),2) AS Target
-FROM
-TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-GROUP BY 1,2,3,4,5,6),
-(SELECT
-Country,Year,Month,Channel,Category,Partnership,
-'CR' AS Metric,ROUND(SUM(FLOAT(CR)),2) AS Target
-FROM
-TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-GROUP BY 1,2,3,4,5,6 ),
-(SELECT
-Country,Year,Month,Channel,Category,Partnership,
-'NC' AS Metric,ROUND(FLOAT(SUM(NC)),2) AS Target
-FROM
-TABLE_DATE_RANGE([unified-welder-172709:TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_], TIMESTAMP('2016-01-01'), TIMESTAMP('2019-12-31'))
-GROUP BY 1,2,3,4,5,6)
+                           FROM (SELECT
+                           Country,Year,Month,Channel,Category,Partnership, 'NMV' AS Metric,
+                           ROUND(cast(SUM(NMV) as FLOAT64),2) AS Target
+                           FROM
+                           `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
+                           WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           GROUP BY 1,2,3,4,5,6)
+                           UNION ALL
+                           (SELECT
+                           Country,Year,Month,Channel,Category,Partnership, 'Item' AS Metric,
+                           ROUND(cast(sum(Item) as FLOAT64),2) AS Target
+                           FROM
+                           `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
+                           WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           GROUP BY 1,2,3,4,5,6)
+                           UNION ALL
+                           (SELECT
+                           Country,Year,Month,Channel,Category,Partnership,
+                           'ASP' AS Metric,
+                           ROUND(cast(SUM(ASP) as FLOAT64),2) AS Target
+                           FROM
+                           `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
+                           WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           GROUP BY 1,2,3,4,5,6)
+                           UNION ALL
+                           (SELECT
+                           Country,Year,Month,Channel,Category,Partnership,
+                           'PV' AS Metric,ROUND(cast(SUM(PV) as FLOAT64),2) AS Target
+                           FROM
+                           `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
+                           WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           GROUP BY 1,2,3,4,5,6)
+                           UNION ALL
+                           (SELECT
+                           Country,Year,Month,Channel,Category,Partnership,
+                           'CR' AS Metric,ROUND(SUM(cast(CR as FLOAT64)),2) AS Target
+                           FROM
+                           `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
+                           WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           GROUP BY 1,2,3,4,5,6 )
+                           UNION ALL
+                           (SELECT
+                           Country,Year,Month,Channel,Category,Partnership,
+                           'NC' AS Metric,ROUND(cast(SUM(NC) as FLOAT64),2) AS Target
+                           FROM
+                           `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
+                           WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           GROUP BY 1,2,3,4,5,6)
 ")
   
-target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf)
+target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
   
 # get actuals data by date 
-get_actuals_query <- paste0("SELECT Date_of_Week, year(Date_of_Week) as Year,
-case when month(Date_of_Week) = 1 then 'Jan'
-when month(Date_of_Week) = 2 then 'Feb'
-when month(Date_of_Week) = 3 then 'Mar'
-when month(Date_of_Week) = 4 then 'Apr'
-when month(Date_of_Week) = 5 then 'May'
-when month(Date_of_Week) = 6 then 'Jun'
-when month(Date_of_Week) = 7 then 'Jul'
-when month(Date_of_Week) = 8 then 'Aug'
-when month(Date_of_Week) = 9 then 'Sep'
-when month(Date_of_Week) = 10 then 'Oct'
-when month(Date_of_Week) = 11 then 'Nov'
-when month(Date_of_Week) = 12 then 'Dec'
-end as Month,Channel,Brand,Country,
-case when Category is null then 'Others' else Category end as Category,
-# Sub_Category,
-Partnership,SUM(NMV) as NMV,sum(Items) as Item,(sum(NMV)/sum(Items)) as ASP,
-sum(PV) as PV,
-sum(Items) / sum(PV) as CR
-# need NC query
-FROM(SELECT 'Lazada' as Channel,Brand,Country,
-case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
-# case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
-Retail_MP as Partnership,
-date(File_Date) AS Date_of_Week,
-sum(Net_Items) as Items, SUM(NMV) AS NMV, sum(PV_App) + sum(PV_Web) as PV,
-# sum(New_Cust) as NC,
-sum(NMV) / sum(Net_Items) as ASP,
-(sum(PV_App/CR_APP) + sum(PV_Web/CR_Web)) / (sum(PV_App) + sum(PV_Web))  as CR     
-FROM table_date_range([unified-welder-172709.Brand_Partnership_Report_Unilever_SEA.SKU_Detail_],
-timestamp('2016-01-01'), timestamp('2019-12-31'))
-GROUP BY Country, Category,
-# Sub_Category,
-Partnership,Date_of_Week,Channel,Brand),    
-( SELECT 'Shopee' as Channel, Brand, Country,
-case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
-# case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
-'MP' as Partnership,
-# need retail/MP partnership
-date(End_Date) AS Date_of_Week,sum(float(Total_Quantity_Sold)) as Items,
-SUM(Completed_Sales_This_Week_EUR) AS NMV, sum(Total_Product_Views) as PV,
-(SUM(Completed_Sales_This_Week_EUR) / sum(Total_Quantity_Sold)) as ASP ,
-sum(Completed_Orders_This_Week) / sum(Total_Product_Views) as CR
-# need NC query
-FROM table_date_range([unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_],
-timestamp('2016-01-01'), timestamp('2019-12-31'))
-GROUP BY Country,Category,
-#  Sub_Category,
-Date_of_Week,Channel,Brand,Partnership)
-GROUP BY Country,Year,Month,Category,
-# Sub_Category,
-Date_of_Week, Channel,Brand,Partnership")
-  
-actuals_data <- query_exec(get_actuals_query, project, destination_table = NULL, max_pages = Inf)
-
-# get actuals data by date 
-get_actuals_subcat_query <- paste0("SELECT Date_of_Week, year(Date_of_Week) as Year,
-                            case when month(Date_of_Week) = 1 then 'Jan'
-                            when month(Date_of_Week) = 2 then 'Feb'
-                            when month(Date_of_Week) = 3 then 'Mar'
-                            when month(Date_of_Week) = 4 then 'Apr'
-                            when month(Date_of_Week) = 5 then 'May'
-                            when month(Date_of_Week) = 6 then 'Jun'
-                            when month(Date_of_Week) = 7 then 'Jul'
-                            when month(Date_of_Week) = 8 then 'Aug'
-                            when month(Date_of_Week) = 9 then 'Sep'
-                            when month(Date_of_Week) = 10 then 'Oct'
-                            when month(Date_of_Week) = 11 then 'Nov'
-                            when month(Date_of_Week) = 12 then 'Dec'
-                            end as Month,Channel,Brand,Country,
-                            case when Category is null then 'Others' else Category end as Category,
-                            Sub_Category,
-                            Partnership,SUM(NMV) as NMV,sum(Items) as Item,(sum(NMV)/sum(Items)) as ASP,
+get_actuals_query <- paste0("select 
+Date_of_Week,
+                            EXTRACT(Year from Date_of_Week) as Year,
+                            case when extract(month from Date_of_Week) = 1 then 'Jan'
+                            when extract(month from Date_of_Week) = 2 then 'Feb' 
+                            when extract(month from Date_of_Week) = 3 then 'Mar'
+                            when extract(month from Date_of_Week) = 4 then 'Apr'
+                            when extract(month from Date_of_Week) = 5 then 'May'
+                            when extract(month from Date_of_Week) = 6 then 'Jun'
+                            when extract(month from Date_of_Week) = 7 then 'Jul'
+                            when extract(month from Date_of_Week) = 8 then 'Aug'
+                            when extract(month from Date_of_Week) = 9 then 'Sep'
+                            when extract(month from Date_of_Week) = 10 then 'Oct'
+                            when extract(month from Date_of_Week) = 11 then 'Nov'
+                            when extract(month from Date_of_Week) = 12 then 'Dec'
+                            end as Month,
+                            Channel,
+                            Brand,
+                            Country,
+                            Category,
+                            # Sub_Category,
+                            Partnership,
+                            SUM(NMV) as NMV,
+                            sum(Items) as Item,
+                            safe_divide(sum(NMV),sum(Items)) as ASP,
                             sum(PV) as PV,
-                            sum(Items) / sum(PV) as CR
+                            safe_divide(sum(Items), sum(PV)) as CR
                             # need NC query
-                            FROM(SELECT 'Lazada' as Channel,Brand,Country,
+                            from(SELECT 'Lazada' as Channel,
+                            Brand,Country,
                             case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
-                            case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
+                            # case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
                             Retail_MP as Partnership,
-                            date(File_Date) AS Date_of_Week,
-                            sum(Net_Items) as Items, SUM(NMV) AS NMV, sum(PV_App) + sum(PV_Web) as PV,
-                            # sum(New_Cust) as NC,
-                            sum(NMV) / sum(Net_Items) as ASP,
-                            (sum(PV_App/CR_APP) + sum(PV_Web/CR_Web)) / (sum(PV_App) + sum(PV_Web))  as CR     
-                            FROM table_date_range([unified-welder-172709.Brand_Partnership_Report_Unilever_SEA.SKU_Detail_],
-                            timestamp('2016-01-01'), timestamp('2019-12-31'))
+                            cast(File_Date as DATE) AS Date_of_Week,
+                            sum(Net_Items) as Items,
+                            SUM(NMV) AS NMV,
+                            sum(PV_App) + sum(PV_Web) as PV
+                            FROM `unified-welder-172709.Brand_Partnership_Report_Unilever_SEA.SKU_Detail_*`
+                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
                             GROUP BY Country, Category,
-                            Sub_Category,
-                            Partnership,Date_of_Week,Channel,Brand),    
-                            ( SELECT 'Shopee' as Channel, Brand, Country,
+                            # Sub_Category,
+                            Partnership, Date_of_Week,  Channel, Brand
+                            UNION ALL (  
+                            SELECT 'Shopee' as Channel,
+                            Brand,
+                            Country,
                             case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
-                            case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
+                            # case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
                             'MP' as Partnership,
                             # need retail/MP partnership
-                            date(End_Date) AS Date_of_Week, sum(float(Total_Quantity_Sold)) as Items,
-                            SUM(Completed_Sales_This_Week_EUR) AS NMV, sum(Total_Product_Views) as PV,
-                            (SUM(Completed_Sales_This_Week_EUR) / sum(Total_Quantity_Sold)) as ASP ,
-                            sum(Completed_Orders_This_Week) / sum(Total_Product_Views) as CR
+                            cast(File_Date as DATE) AS Date_of_Week,
+                            sum(cast(Total_Quantity_Sold as FLOAT64)) as Items,
+                            SUM(Completed_Sales_This_Week_EUR) AS NMV,
+                            sum(Total_Product_Views) as PV
                             # need NC query
-                            FROM table_date_range([unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_],
-                            timestamp('2016-01-01'), timestamp('2019-12-31'))
-                            GROUP BY Country,Category,
-                            Sub_Category,
-                            Date_of_Week,Channel,Brand,Partnership)
-                            GROUP BY Country,Year,Month,Category,
-                            Sub_Category,
-                            Date_of_Week, Channel,Brand,Partnership")
+                            FROM `unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_*`
+                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                            GROUP BY Country, Category,
+                            #  Sub_Category,
+                            Date_of_Week,
+                            Channel,
+                            Brand,
+                            Partnership))
+                            group by Date_of_Week, Year, Month,  Channel,
+                            Brand, Country, Category,
+                            # Sub_Category,
+                            Partnership")
+  
+actuals_data <- query_exec(get_actuals_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
 
-actuals_subcat_data <- query_exec(get_actuals_subcat_query, project, destination_table = NULL, max_pages = Inf)
+# get actuals data by date 
+get_actuals_subcat_query <- paste0("select 
+Date_of_Week,
+                                   EXTRACT(Year from Date_of_Week) as Year,
+                                   case when extract(month from Date_of_Week) = 1 then 'Jan'
+                                   when extract(month from Date_of_Week) = 2 then 'Feb' 
+                                   when extract(month from Date_of_Week) = 3 then 'Mar'
+                                   when extract(month from Date_of_Week) = 4 then 'Apr'
+                                   when extract(month from Date_of_Week) = 5 then 'May'
+                                   when extract(month from Date_of_Week) = 6 then 'Jun'
+                                   when extract(month from Date_of_Week) = 7 then 'Jul'
+                                   when extract(month from Date_of_Week) = 8 then 'Aug'
+                                   when extract(month from Date_of_Week) = 9 then 'Sep'
+                                   when extract(month from Date_of_Week) = 10 then 'Oct'
+                                   when extract(month from Date_of_Week) = 11 then 'Nov'
+                                   when extract(month from Date_of_Week) = 12 then 'Dec'
+                                   end as Month,
+                                   Channel,
+                                   Brand,
+                                   Country,
+                                   Category,
+                                   Sub_Category,
+                                   Partnership,
+                                   SUM(NMV) as NMV,
+                                   sum(Items) as Item,
+                                   safe_divide(sum(NMV),sum(Items)) as ASP,
+                                   sum(PV) as PV,
+                                   safe_divide(sum(Items), sum(PV)) as CR
+                                   # need NC query
+                                   from(SELECT 'Lazada' as Channel,
+                                   Brand,Country,
+                                   case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
+                                   case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
+                                   Retail_MP as Partnership,
+                                   cast(File_Date as DATE) AS Date_of_Week,
+                                   sum(Net_Items) as Items,
+                                   SUM(NMV) AS NMV,
+                                   sum(PV_App) + sum(PV_Web) as PV
+                                   FROM `unified-welder-172709.Brand_Partnership_Report_Unilever_SEA.SKU_Detail_*`
+                                   WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                                   AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                                   GROUP BY Country, Category,
+                                   Sub_Category,
+                                   Partnership, Date_of_Week,  Channel, Brand
+                                   UNION ALL (  
+                                   SELECT 'Shopee' as Channel,
+                                   Brand,
+                                   Country,
+                                   case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
+                                   case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
+                                   'MP' as Partnership,
+                                   # need retail/MP partnership
+                                   cast(File_Date as DATE) AS Date_of_Week,
+                                   sum(cast(Total_Quantity_Sold as FLOAT64)) as Items,
+                                   SUM(Completed_Sales_This_Week_EUR) AS NMV,
+                                   sum(Total_Product_Views) as PV
+                                   # need NC query
+                                   FROM `unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_*`
+                                   WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
+                                   AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                                   GROUP BY Country, Category,
+                                   Sub_Category,
+                                   Date_of_Week,
+                                   Channel,
+                                   Brand,
+                                   Partnership))
+                                   group by Date_of_Week, Year, Month,  Channel,
+                                   Brand, Country, Category,
+                                   Sub_Category,
+                                   Partnership")
+
+actuals_subcat_data <- query_exec(get_actuals_subcat_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
 
 # target_data <- read_csv("TH_Monthly_Targets.csv")
 # shopee_lazada <- read_csv("Shopee_Lazada_Ach.csv")
