@@ -10,7 +10,9 @@ ga_auth()
 # ga_auth(new_user = TRUE)
 
 Sys.setenv(GA_AUTH_FILE = "C:/Users/User/Documents/.httr-oauth")
-# need alternative for mac
+
+# alternative for mac
+# Sys.setenv(GA_AUTH_FILE = "/Users/Kevin/.httr-oauth")
 
 account_list <- ga_account_list()
 
@@ -47,7 +49,7 @@ df_all <- rbind(df1,df2,df3)
 
 
 ## pick a profile with data to query
-ga_id <- account_list[1123,'viewId']
+ga_id <- account_list[1740,'viewId']
 
 ## get a list of what metrics and dimensions you can use
 ga_auth()
@@ -73,7 +75,44 @@ seg_defined <- segment_define(sv_simple)
 segment4 <- segment_ga4("simple", user_segment = seg_defined)
 
 
-# segments: semicolon is "AND", a comma is "OR"
+# shopping stage example
+se_country <- segment_element("country", 
+                       operator = "REGEXP", 
+                       type = "DIMENSION", 
+                       expressions = "Singapore",
+                       scope = "SESSION")
+
+se_shoppingStage_pdtView <- segment_element("shoppingStage", 
+                              operator = "EXACT", 
+                              type = "DIMENSION", 
+                              expressions = "PRODUCT_VIEW",
+                              scope = "SESSION")
+
+se_shoppingStage_addtocart <- segment_element("shoppingStage", 
+                                            operator = "EXACT", 
+                                            type = "DIMENSION", 
+                                            expressions = "ADD_TO_CART",
+                                            scope = "SESSION")
+
+# OR combinations are applied at vector_simple
+sv_simple <- segment_vector_simple(list(list(se_country), list(se_shoppingStage_pdtView)))
+sv_simple_country <- segment_vector_simple(list(list(se_country)))
+
+# AND combinations are applied at segment_define
+seg_defined <- segment_define(list(sv_simple))
+# use session_segment for session scope and user_segment for user scope
+segment4_repeat <- segment_ga4("simple", session_segment = seg_defined)
+
+
+ga_repeat_cust <- google_analytics(ga_id,
+                            date_range = c("2018-02-01","2018-04-06"), 
+                            metrics = c("sessions"), 
+                            dimensions = c("Country"),
+                            segments = c(segment4_repeat),
+                            anti_sample = TRUE,
+                            max = -1)
+
+# v3 segments: semicolon is "AND", a comma is "OR"
 
 segment_def_medium <- "sessions::condition::ga:medium=~^(email|referral)$"
 seg_obj_medium <- segment_ga4("test", segment_id = segment_def_medium)
@@ -116,4 +155,3 @@ google_analytics_4(ga_id, #=This is a (dynamic) ViewID parameter
                    #anti_sample = TRUE,
                    max = -1,
                    useResourceQuotas = TRUE)
-
