@@ -10,7 +10,8 @@ ga_auth(new_user = TRUE)
 ## get your accounts and view ID
 account_list <- ga_account_list()
 
-view_id <- account_list$viewId[account_list$viewName=='Master Global All markets - Filtered View']
+# change the view name to the view that you wish to conduct analysis on
+view_id <- account_list$viewId[account_list$viewName=='Lazada SG - SGD']
 view_id <- account_list$viewId[account_list$viewName=='Roll-up All (filtered)']
 id_combined <- c(view_id)
 
@@ -22,16 +23,16 @@ segment_for_allusers <- "gaid::-1"
 seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
 
 se_trans <- segment_element("transactions", 
-                      operator = "GREATER_THAN", 
-                      type = "METRIC", 
-                      comparisonValue = 0, 
-                      scope = "USER")
+                            operator = "GREATER_THAN", 
+                            type = "METRIC", 
+                            comparisonValue = 0, 
+                            scope = "USER")
 
 se_usertype <- segment_element("userType", 
-                       operator = "EXACT", 
-                       type = "DIMENSION", 
-                       expressions = "New Visitor",
-                       scope = "USER")
+                               operator = "EXACT", 
+                               type = "DIMENSION", 
+                               expressions = "New Visitor",
+                               scope = "USER")
 
 sv_simple <- segment_vector_simple(list(list(se_trans)))
 sv_simple2 <- segment_vector_simple(list(list(se_usertype)))
@@ -48,20 +49,22 @@ seg_obj_desktop <- segment_ga4("Desktop", segment_id = segment_def_for_call)
 
 
 # enter start date and end date here. Format: yyyy-mm-dd
-startDate <- "2018-01-10"
-endDate <- "2018-02-05"
+startDate <- "2017-12-01"
+endDate <- "2018-03-31"
+
+startDate2 <- "2017-01-01"
 
 # Slide 11 - Current State of Play
 # ecommerce conversion rate is used here but other conversion types can be included too
 # other conversion types: goalXXCompletions
 ga_data_currentstate <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
-                     date_range = c(startDate, endDate), 
-                     metrics = c("sessions", "transactions", "transactionRevenue"), 
-                     dimensions = c("yearMonth", "deviceCategory", "userType"),
-                     segments = c(seg_allUsers),
-                     anti_sample = TRUE,
-                     max = -1)
+                   date_range = c(startDate2, endDate), 
+                   metrics = c("sessions", "transactions", "transactionRevenue"), 
+                   dimensions = c("yearMonth", "deviceCategory", "userType"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
 
 ga_data_currentstate <-  ga_data_currentstate %>%
   mutate(yearMonth = as.yearmon(as.character(yearMonth), "%Y%m"))
@@ -87,7 +90,7 @@ currentState_trafficGrowth_device <- currentState_trafficGrowth_device %>%
 
 currentState_trafficGrowth_device$`% change` <- (currentState_trafficGrowth_device[[3]]-currentState_trafficGrowth_device[[2]])/currentState_trafficGrowth_device[[2]]
 currentState_trafficGrowth_device$`% change` <- round(currentState_trafficGrowth_device$`% change`, 3)  
-  
+
 # traffic growth rate by new vs returning
 currentState_trafficGrowth_userType <- ga_data_currentstate %>%
   select(yearMonth, userType, sessions) %>%
@@ -162,7 +165,7 @@ cr_aov_deviceSplit <- ga_data_currentstate %>%
   group_by(deviceCategory) %>%
   summarise(CR = sum(transactions) / sum(sessions),
             AOV = sum(transactionRevenue) / sum(transactions))
-         
+
 # Slide 14: Impact of Mobile vs Desktop in Purchase Paths are Different
 ga_data_shoppingstage <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
@@ -208,8 +211,8 @@ mobile_desktop_parity_Rev <- mobile_desktop_parity_sessions*mobile_desktop_parit
 
 potentialRevenue_cols <- data.frame(metric = c("sessions", "Revenue", "Conversion Rate", "Avg Order Value"), 
                                     `Increase Mobile Conversion Rate by 50 pct` = c(mobile_50pct_sessions, 
-                                          mobile_50pct_Rev, mobile_50pct_CR, 
-                                          mobile_50pct_AOV), 
+                                                                                    mobile_50pct_Rev, mobile_50pct_CR, 
+                                                                                    mobile_50pct_AOV), 
                                     `Bring Mobile to Parity with Desktop` = c(mobile_desktop_parity_sessions, 
                                                                               mobile_desktop_parity_Rev,
                                                                               mobile_desktop_parity_CR, 
@@ -283,6 +286,41 @@ ga_data_sessions_gender_split_table_male <- ga_data_sessions_gender_split_table 
   filter(userGender == "male") %>%
   select(deviceCategory, userAgeBracket, RevenuePerSession) %>%
   spread(deviceCategory, RevenuePerSession)
+
+
+# slide 40: What are your valuable users' interests?
+ga_data_valuable_userinterests <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactionRevenue"), 
+                   dimensions = c("interestAffinityCategory"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_valuable_userinterests_table <- ga_data_valuable_userinterests %>%
+  mutate(revenuePerSession = transactionRevenue/sessions) %>%
+  filter(sessions >= quantile(sessions, 0.7)) %>%
+  arrange(desc(revenuePerSession)) %>%
+  top_n(10)
+
+
+ga_data_valuable_usermarket <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions", "transactionRevenue"), 
+                   dimensions = c("interestInMarketCategory"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1) 
+
+ga_data_valuable_usermarket_table <- ga_data_valuable_usermarket %>%
+  mutate(revenuePerSession = transactionRevenue/sessions) %>%
+  filter(sessions >= quantile(sessions, 0.7)) %>%
+  arrange(desc(revenuePerSession)) %>%
+  top_n(10)
+  
+
 
 # Slide 41: Which regions are your mobile users from?
 ga_data_region_current <- 
@@ -368,10 +406,20 @@ ga_data_pageDepth_CR_table <- ga_data_pageDepth_CR %>%
   filter(pageDepth <= 25) %>%
   arrange(pageDepth)
 
-ga_data_sessionDuration_CR_table <- ga_data_pageDepth_CR %>%
-  mutate(pageDepth = as.numeric(pageDepth)) %>%
-  select(sessionDuration, transactionsPerSession) %>%
-  filter(sessionDuration < 5000)
+ga_data_sessionDuration_CR <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("transactionsPerSession"), 
+                   dimensions = c("sessionDurationBucket"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_sessionDuration_CR_table <- ga_data_sessionDuration_CR %>%
+  mutate(sessionDurationBucket = as.numeric(sessionDurationBucket)) %>%
+  select(sessionDurationBucket, transactionsPerSession) %>%
+  filter(sessionDurationBucket < 500) %>%
+  arrange(desc(sessionDurationBucket))
 
 
 # Slide 61: Site Search Optimisation
@@ -480,8 +528,8 @@ ga_data_catalogposition_table <- ga_data_catalogposition %>%
             productListClicks = sum(productListClicks)) %>%
   mutate(productListViewTotal = productListViews[1],
          cumulative_shareofViews = productListViews / productListViewTotal,
-            addtoCart_rate = productAddsToCart/productListViews,
-            productCTR = productListClicks /productListViews) %>%
+         addtoCart_rate = productAddsToCart/productListViews,
+         productCTR = productListClicks /productListViews) %>%
   select(productListPositionBin,
          productListViews,
          productAddsToCart,
@@ -544,17 +592,6 @@ ga_data_recency_CR_table <- ga_data_recency_CR %>%
   arrange(`Days Since Last Session`)
 
 
-# slide 73: Drive first time purchaser
-ga_data_repeatpurchase <- 
-  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
-                     date_range = c(startDate, endDate), 
-                     metrics = c("transactionsPerUser"), 
-                     dimensions = c("userType"),
-                     segments = c(seg_usertype),
-                     anti_sample = TRUE,
-                     max = -1)
-
-
 # upload data to Googlesheets - what if owner of google sheet is different
 my_sheets <- gs_ls()
 myworksheet <- gs_key("1ENbfT76-Q_HcmvzuePMTqQjF3EU4IJxMevJ4rgdNK3c")
@@ -581,8 +618,10 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessions_gender_split_table_male, anchor = "E264")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_hourday_device_table, anchor = "E300")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_weekday_device_table, anchor = "E327")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_valuable_userinterests_table, anchor = "K281")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_valuable_usermarket_table, anchor = "K294")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageDepth_CR_table, anchor = "E340")
-gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessionDuration_CR_table, anchor = "H340")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessionDuration_CR_table, anchor = "M340")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sitesearch_value_table, anchor = "E371")
 # this needs to be optimised as large amounts of data will vastly slow down google sheets API
 # gs_edit_cells(myworksheet, ws = "SiteSearchOptimisation", input = ga_data_searchterms_tablefiltered, anchor = "A1")
@@ -592,5 +631,3 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_catalogposition_table
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_daysSinceLastSession_table, anchor = "E473")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_freq_CR_table, anchor = "E508")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_recency_CR_table, anchor = "H508")
-
-
