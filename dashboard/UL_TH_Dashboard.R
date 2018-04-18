@@ -11,12 +11,12 @@ get_target_query <- paste0("SELECT
 Country, Year, Month,Channel,Category,Partnership,Metric,Target
                            FROM (SELECT
                            Country,Year,Month,Channel,Category,Partnership, 'NMV' AS Metric,
-                           ROUND(cast(SUM(NMV) as FLOAT64),2) AS Target
+                           cast(SUM(NMV) as FLOAT64) AS Target
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
-                           GROUP BY 1,2,3,4,5,6)
+                           GROUP BY 1,2,3,4,5,6,7)
                            UNION ALL
                            (SELECT
                            Country,Year,Month,Channel,Category,Partnership, 'Item' AS Metric,
@@ -25,17 +25,17 @@ Country, Year, Month,Channel,Category,Partnership,Metric,Target
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
-                           GROUP BY 1,2,3,4,5,6)
+                           GROUP BY 1,2,3,4,5,6,7)
                            UNION ALL
                            (SELECT
                            Country,Year,Month,Channel,Category,Partnership,
                            'ASP' AS Metric,
-                           ROUND(cast(SUM(ASP) as FLOAT64),2) AS Target
+                           cast(SUM(ASP) as FLOAT64) AS Target
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
-                           GROUP BY 1,2,3,4,5,6)
+                           GROUP BY 1,2,3,4,5,6,7)
                            UNION ALL
                            (SELECT
                            Country,Year,Month,Channel,Category,Partnership,
@@ -44,25 +44,25 @@ Country, Year, Month,Channel,Category,Partnership,Metric,Target
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
-                           GROUP BY 1,2,3,4,5,6)
+                           GROUP BY 1,2,3,4,5,6,7)
                            UNION ALL
                            (SELECT
                            Country,Year,Month,Channel,Category,Partnership,
-                           'CR' AS Metric,ROUND(SUM(cast(CR as FLOAT64)),2) AS Target
+                           'CR' AS Metric,cast(CR as FLOAT64) AS Target
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
-                           GROUP BY 1,2,3,4,5,6 )
+                           GROUP BY 1,2,3,4,5,6,7,8 )
                            UNION ALL
                            (SELECT
                            Country,Year,Month,Channel,Category,Partnership,
-                           'NC' AS Metric,ROUND(cast(SUM(NC) as FLOAT64),2) AS Target
+                           'NC' AS Metric, cast(SUM(NC) as FLOAT64) AS Target
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
-                           GROUP BY 1,2,3,4,5,6)
+                           GROUP BY 1,2,3,4,5,6,7)
 ")
   
 target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
@@ -162,7 +162,7 @@ Date_of_Week,
                                    Brand,
                                    Country,
                                    Category,
-                                   Sub_Category, Sub_Category_Lv3
+                                   Sub_Category, Sub_Category_Lv3,
                                    Partnership,
                                    SUM(NMV) as NMV,
                                    sum(Items) as Item,
@@ -186,7 +186,7 @@ Date_of_Week,
                                    WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                                    AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
                                    GROUP BY Country, Category,
-                                   Sub_Category, Sub_Category_Lv3
+                                   Sub_Category, Sub_Category_Lv3,
                                    Partnership, Date_of_Week,  Channel, Brand
                                    UNION ALL (  
                                    SELECT 'Shopee' as Channel,
@@ -207,7 +207,7 @@ Date_of_Week,
                                    WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                                    AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
                                    GROUP BY Country, Category,
-                                   Sub_Category,
+                                   Sub_Category, Sub_Category_Lv3,
                                    Date_of_Week,
                                    Channel,
                                    Brand,
@@ -228,7 +228,7 @@ actuals_subcat_data <- query_exec(get_actuals_subcat_query, project, destination
 #  gather("Metric", "Target", 8:13) 
 
 shopee_lazada_master <- actuals_data %>%
-  gather("Metric", "Achieved", 9:13)
+  gather("Metric", "Achieved", 9:14)
 
 combined_Target_Ach_master <- shopee_lazada_master %>%
   left_join(target_data, by = c("Year", "Country", "Month", "Channel", 
@@ -243,7 +243,7 @@ combined_Target_Ach_master <- shopee_lazada_master %>%
          TRUE ~ as.character(Category_Actuals)))
 
 actuals_subcat_data_table <- actuals_subcat_data %>%
-  gather("Metric", "Achieved", 11:15) %>%
+  gather("Metric", "Achieved", 11:16) %>%
   filter(Metric == 'NMV')
 
 # Variables for the BigQuery upload portion
