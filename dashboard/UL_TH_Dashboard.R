@@ -95,7 +95,7 @@ Date_of_Week,
                             safe_divide(sum(NMV),sum(Items)) as ASP,
                             sum(PV) as PV,
                             safe_divide(sum(Items), sum(PV)) as CR,
-                            sum(New_Cust) as NC
+                            sum(NC) as NC
                             from(SELECT 'Lazada' as Channel,
                             Brand,Country,
                             case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
@@ -104,7 +104,8 @@ Date_of_Week,
                             cast(File_Date as DATE) AS Date_of_Week,
                             sum(Net_Items) as Items,
                             SUM(NMV) AS NMV,
-                            sum(PV_App) + sum(PV_Web) as PV
+                            sum(PV_App) + sum(PV_Web) as PV,
+                            sum(New_Cust) as NC
                             FROM `unified-welder-172709.Brand_Partnership_Report_Unilever_SEA.SKU_Detail_*`
                             WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                             AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
@@ -168,7 +169,7 @@ Date_of_Week,
                                    safe_divide(sum(NMV),sum(Items)) as ASP,
                                    sum(PV) as PV,
                                    safe_divide(sum(Items), sum(PV)) as CR, 
-                                   sum(New_Cust) as NC
+                                   sum(NC) as NC
                                    
                                    from(SELECT 'Lazada' as Channel,
                                    Brand,Country,
@@ -178,7 +179,8 @@ Date_of_Week,
                                    cast(File_Date as DATE) AS Date_of_Week,
                                    sum(Net_Items) as Items,
                                    SUM(NMV) AS NMV,
-                                   sum(PV_App) + sum(PV_Web) as PV
+                                   sum(PV_App) + sum(PV_Web) as PV,
+                                   sum(New_Cust) as NC
                                    FROM `unified-welder-172709.Brand_Partnership_Report_Unilever_SEA.SKU_Detail_*`
                                    WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                                    AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
