@@ -162,7 +162,7 @@ Date_of_Week,
                                    Brand,
                                    Country,
                                    Category,
-                                   Sub_Category,
+                                   Sub_Category, Sub_Category_Lv3
                                    Partnership,
                                    SUM(NMV) as NMV,
                                    sum(Items) as Item,
@@ -175,6 +175,7 @@ Date_of_Week,
                                    Brand,Country,
                                    case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
                                    case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
+                                   case when Cat_Level_3 is null then 'Others' else Cat_Level_3 end as Sub_Category_Lv3,
                                    Retail_MP as Partnership,
                                    cast(File_Date as DATE) AS Date_of_Week,
                                    sum(Net_Items) as Items,
@@ -185,7 +186,7 @@ Date_of_Week,
                                    WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                                    AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
                                    GROUP BY Country, Category,
-                                   Sub_Category,
+                                   Sub_Category, Sub_Category_Lv3
                                    Partnership, Date_of_Week,  Channel, Brand
                                    UNION ALL (  
                                    SELECT 'Shopee' as Channel,
@@ -193,6 +194,7 @@ Date_of_Week,
                                    Country,
                                    case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
                                    case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
+                                   case when Cat_Level_3 is null then 'Others' else Cat_Level_3 end as Sub_Category_Lv3,
                                    case when Country = 'TH' then 'MP' else 'Retail' end as Partnership,
                                    # need retail/MP partnership
                                    cast(File_Date as DATE) AS Date_of_Week,
@@ -212,7 +214,8 @@ Date_of_Week,
                                    Partnership))
                                    group by Date_of_Week, Year, Month,  Channel,
                                    Brand, Country, Category,
-                                   Sub_Category,
+                                   Sub_Category, 
+                                   Sub_Category_Lv3,
                                    Partnership")
 
 actuals_subcat_data <- query_exec(get_actuals_subcat_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
@@ -240,7 +243,7 @@ combined_Target_Ach_master <- shopee_lazada_master %>%
          TRUE ~ as.character(Category_Actuals)))
 
 actuals_subcat_data_table <- actuals_subcat_data %>%
-  gather("Metric", "Achieved", 10:14) %>%
+  gather("Metric", "Achieved", 11:15) %>%
   filter(Metric == 'NMV')
 
 # Variables for the BigQuery upload portion
