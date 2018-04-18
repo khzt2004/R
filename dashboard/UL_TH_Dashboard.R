@@ -117,7 +117,7 @@ Date_of_Week,
                             Country,
                             case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
                             # case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
-                            'MP' as Partnership,
+                            case when Country = 'TH' then 'MP' else 'Retail' end as Partnership,
                             # need retail/MP partnership
                             cast(File_Date as DATE) AS Date_of_Week,
                             sum(cast(Total_Quantity_Sold as FLOAT64)) as Items,
@@ -167,7 +167,8 @@ Date_of_Week,
                                    sum(Items) as Item,
                                    safe_divide(sum(NMV),sum(Items)) as ASP,
                                    sum(PV) as PV,
-                                   safe_divide(sum(Items), sum(PV)) as CR
+                                   safe_divide(sum(Items), sum(PV)) as CR, 
+                                   sum(New_Cust) as NC
                                    # need NC query
                                    from(SELECT 'Lazada' as Channel,
                                    Brand,Country,
@@ -190,12 +191,13 @@ Date_of_Week,
                                    Country,
                                    case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
                                    case when Cat_Level_2 is null then 'Others' else Cat_Level_2 end as Sub_Category,
-                                   'MP' as Partnership,
+                                   case when Country = 'TH' then 'MP' else 'Retail' end as Partnership,
                                    # need retail/MP partnership
                                    cast(File_Date as DATE) AS Date_of_Week,
                                    sum(cast(Total_Quantity_Sold as FLOAT64)) as Items,
                                    SUM(Completed_Sales_This_Week_EUR) AS NMV,
-                                   sum(Total_Product_Views) as PV
+                                   sum(Total_Product_Views) as PV,
+                                   cast('0' as INT64) as NC
                                    # need NC query
                                    FROM `unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_*`
                                    WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
