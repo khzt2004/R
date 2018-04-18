@@ -94,8 +94,8 @@ Date_of_Week,
                             sum(Items) as Item,
                             safe_divide(sum(NMV),sum(Items)) as ASP,
                             sum(PV) as PV,
-                            safe_divide(sum(Items), sum(PV)) as CR
-                            # need NC query
+                            safe_divide(sum(Items), sum(PV)) as CR,
+                            sum(New_Cust) as NC
                             from(SELECT 'Lazada' as Channel,
                             Brand,Country,
                             case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
@@ -122,8 +122,8 @@ Date_of_Week,
                             cast(File_Date as DATE) AS Date_of_Week,
                             sum(cast(Total_Quantity_Sold as FLOAT64)) as Items,
                             SUM(Completed_Sales_This_Week_EUR) AS NMV,
-                            sum(Total_Product_Views) as PV
-                            # need NC query
+                            sum(Total_Product_Views) as PV,
+                            cast('0' as INT64) as NC
                             FROM `unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_*`
                             WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                             AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
@@ -169,7 +169,7 @@ Date_of_Week,
                                    sum(PV) as PV,
                                    safe_divide(sum(Items), sum(PV)) as CR, 
                                    sum(New_Cust) as NC
-                                   # need NC query
+                                   
                                    from(SELECT 'Lazada' as Channel,
                                    Brand,Country,
                                    case when Cat_Level_1 is null then 'Others' else Cat_Level_1 end as Category,
@@ -198,7 +198,7 @@ Date_of_Week,
                                    SUM(Completed_Sales_This_Week_EUR) AS NMV,
                                    sum(Total_Product_Views) as PV,
                                    cast('0' as INT64) as NC
-                                   # need NC query
+                                   
                                    FROM `unified-welder-172709.Regional_Official_Seller_Report.Product_Performance_data_*`
                                    WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
                                    AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
