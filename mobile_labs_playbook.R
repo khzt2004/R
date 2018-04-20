@@ -423,6 +423,111 @@ ga_data_sessionDuration_CR_table <- ga_data_sessionDuration_CR %>%
   filter(sessionDurationBucket < 500) %>%
   arrange(desc(sessionDurationBucket))
 
+# Slide 51: Re-engage Users with High Product Engagement
+se_productdetail <- segment_element("productDetailViews", 
+                      operator = "GREATER_THAN", 
+                      type = "METRIC", 
+                      comparisonValue = 0, 
+                      scope = "USER")
+
+se2_bought <- segment_element("transactions", 
+                              operator = "GREATER_THAN", 
+                              type = "METRIC", 
+                              comparisonValue = 0, 
+                              scope = "USER")
+
+se2_didnotbuy <- segment_element("transactions", 
+                              operator = "EQUAL", 
+                              type = "METRIC", 
+                              comparisonValue = 0, 
+                              scope = "USER")
+
+sv_productdetail <- segment_vector_simple(list(list(se_productdetail)))
+sv_bought <- segment_vector_simple(list(list(se2_bought)))
+sv_didnotbuy <- segment_vector_simple(list(list(se2_didnotbuy)))
+
+seg_defined_view_boughtproduct <- segment_define(list(sv_productdetail, sv_bought))
+seg_defined_view_didnotbuy <- segment_define(list(sv_productdetail, sv_didnotbuy))
+
+segment4_view_boughtproduct <- segment_ga4("Viewed Product Page - Buy", 
+                        user_segment = seg_defined_view_boughtproduct)
+
+segment4_view_didnotbuy  <- segment_ga4("Viewed Product Page - Didn't Buy", 
+                                           user_segment = seg_defined_view_didnotbuy)
+
+lastThreemonths <- Sys.Date() - 90
+yesterday <- Sys.Date() - 1
+
+ga_data_highpdtengagement <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(lastThreemonths, yesterday), 
+                   metrics = c("sessions", "pageviews"), 
+                   # dimensions = c("searchUsed"),
+                   segments = c(segment4_view_boughtproduct, 
+                                segment4_view_didnotbuy),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_highpdtengagement_table <- ga_data_highpdtengagement %>%
+  mutate(pageviewsPerSession = pageviews/sessions) %>%
+  select(segment, pageviewsPerSession)
+
+# Slide 57: Page Loading Time Impacts Your Conversions
+se_bounced <- segment_element("bounces", 
+                                    operator = "GREATER_THAN", 
+                                    type = "METRIC", 
+                                    comparisonValue = 0, 
+                                    scope = "SESSION")
+
+se2_nonbounce <- segment_element("bounces", 
+                              operator = "EQUAL", 
+                              type = "METRIC", 
+                              comparisonValue = 0, 
+                              scope = "SESSION")
+
+se2_boughtsessions <- segment_element("transactions", 
+                              operator = "GREATER_THAN", 
+                              type = "METRIC", 
+                              comparisonValue = 0, 
+                              scope = "SESSION")
+
+se2_didnotbuysessions <- segment_element("transactions", 
+                                 operator = "EQUAL", 
+                                 type = "METRIC", 
+                                 comparisonValue = 0, 
+                                 scope = "SESSION")
+
+sv_bounce <- segment_vector_simple(list(list(se_bounced)))
+sv_nonbounce <- segment_vector_simple(list(list(se2_nonbounce)))
+sv_buysession <- segment_vector_simple(list(list(se2_boughtsessions)))
+sv_nonbuysession <- segment_vector_simple(list(list(se2_didnotbuysessions)))
+
+seg_defined_buyer <- segment_define(list(sv_buysession))
+seg_defined_nonbuyer_nobounce <- segment_define(list(sv_nonbuysession, sv_nonbounce))
+seg_defined_bounce <- segment_define(list(sv_bounce))
+
+segment4_buyer <- segment_ga4("Buyers",
+                              session_segment = seg_defined_buyer)
+
+segment4_nonbuyer_nobounce <- segment_ga4("Non Buyers, No Bounce", 
+                                          session_segment = seg_defined_nonbuyer_nobounce)
+
+segment4_bounce <- segment_ga4("Bounce Sessions", 
+                               session_segment = seg_defined_bounce)
+
+ga_data_pageloadtime <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("avgPageLoadTime"), 
+                   dimensions = c("deviceCategory"),
+                   segments = c(segment4_buyer,
+                                segment4_nonbuyer_nobounce,
+                                segment4_bounce),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_pageloadtime_table <- ga_data_pageloadtime %>%
+  spread(segment, avgPageLoadTime)
 
 # Slide 61: Site Search Optimisation
 ga_data_sitesearch_value <- 
@@ -624,7 +729,9 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_valuable_userinterest
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_valuable_usermarket_table, anchor = "K294")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageDepth_CR_table, anchor = "E340")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessionDuration_CR_table, anchor = "M340")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_highpdtengagement_table, anchor = "I371")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sitesearch_value_table, anchor = "E371")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageloadtime_table, anchor = "H391")
 # this needs to be optimised as large amounts of data will vastly slow down google sheets API
 # gs_edit_cells(myworksheet, ws = "SiteSearchOptimisation", input = ga_data_searchterms_tablefiltered, anchor = "A1")
 # this needs to be optimised as large amounts of data will vastly slow down google sheets API
