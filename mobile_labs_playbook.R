@@ -12,7 +12,7 @@ account_list <- ga_account_list()
 
 # change the view name to the view that you wish to conduct analysis on
 view_id <- account_list$viewId[account_list$viewName=='Lazada SG - SGD']
-view_id <- account_list$viewId[account_list$viewName=='Roll-up All (filtered)']
+# view_id <- account_list$viewId[account_list$viewName=='Roll-up All (filtered)']
 id_combined <- c(view_id)
 
 # selecting segments
@@ -394,14 +394,15 @@ ga_data_weekday_device_table <- ga_data_hourday_device %>%
 ga_data_pageDepth_CR <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
-                   metrics = c("transactionsPerSession", "sessionDuration"), 
+                   metrics = c("transactionsPerSession"), 
                    dimensions = c("pageDepth"),
                    segments = c(seg_allUsers),
                    anti_sample = TRUE,
                    max = -1)
 
 ga_data_pageDepth_CR_table <- ga_data_pageDepth_CR %>%
-  mutate(pageDepth = as.numeric(pageDepth)) %>%
+  mutate(pageDepth = as.numeric(pageDepth),
+         transactionsPerSession = transactionsPerSession/100) %>%
   select(pageDepth, transactionsPerSession) %>%
   filter(pageDepth <= 25) %>%
   arrange(pageDepth)
@@ -416,7 +417,8 @@ ga_data_sessionDuration_CR <-
                    max = -1)
 
 ga_data_sessionDuration_CR_table <- ga_data_sessionDuration_CR %>%
-  mutate(sessionDurationBucket = as.numeric(sessionDurationBucket)) %>%
+  mutate(sessionDurationBucket = as.numeric(sessionDurationBucket),
+         transactionsPerSession = transactionsPerSession/100) %>%
   select(sessionDurationBucket, transactionsPerSession) %>%
   filter(sessionDurationBucket < 500) %>%
   arrange(desc(sessionDurationBucket))
