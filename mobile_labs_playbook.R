@@ -4,6 +4,7 @@ library(lubridate)
 library(googlesheets)
 library(reshape2)
 library(zoo)
+library(easyRFM)
 
 
 ga_auth(new_user = TRUE)
@@ -697,6 +698,19 @@ ga_data_recency_CR_table <- ga_data_recency_CR %>%
   select(`Days Since Last Session` = daysSinceLastSession, CR) %>%
   filter(`Days Since Last Session` <= 30) %>%
   arrange(`Days Since Last Session`)
+
+# RFM
+ga_data_RFM <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("transactionRevenue"), 
+                   dimensions = c("dimension5", "date", "transactionId"),
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+# result <- rfm_auto(ga_data_RFM,id="dimension5",payment="transactionRevenue",
+#                   date="date",date_format = "%Y%m%d")
 
 
 # upload data to Googlesheets - what if owner of google sheet is different
