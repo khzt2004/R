@@ -395,34 +395,42 @@ ga_data_weekday_device_table <- ga_data_hourday_device %>%
 ga_data_pageDepth_CR <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
-                   metrics = c("transactionsPerSession"), 
+                   metrics = c("sessions", "transactionsPerSession"), 
                    dimensions = c("pageDepth"),
                    segments = c(seg_allUsers),
                    anti_sample = TRUE,
                    max = -1)
 
 ga_data_pageDepth_CR_table <- ga_data_pageDepth_CR %>%
+  select(pageDepth, sessions, transactionsPerSession) %>%
   mutate(pageDepth = as.numeric(pageDepth),
-         transactionsPerSession = transactionsPerSession/100) %>%
-  select(pageDepth, transactionsPerSession) %>%
-  filter(pageDepth <= 25) %>%
-  arrange(pageDepth)
+         sessions = as.numeric(sessions),
+         transactionsPerSession = transactionsPerSession/100)%>%
+  arrange(pageDepth) %>%
+  mutate(`% cumulative sessions` = cumsum(sessions)/sum(sessions)) %>%
+  select(pageDepth, `% cumulative sessions`, `Conv. Rate`= transactionsPerSession) %>%
+  filter(pageDepth <= 25)
 
 ga_data_sessionDuration_CR <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
-                   metrics = c("transactionsPerSession"), 
+                   metrics = c("sessions", "transactionsPerSession"), 
                    dimensions = c("sessionDurationBucket"),
                    segments = c(seg_allUsers),
                    anti_sample = TRUE,
                    max = -1)
 
 ga_data_sessionDuration_CR_table <- ga_data_sessionDuration_CR %>%
+  select(sessionDurationBucket, sessions, transactionsPerSession) %>%
   mutate(sessionDurationBucket = as.numeric(sessionDurationBucket),
-         transactionsPerSession = transactionsPerSession/100) %>%
-  select(sessionDurationBucket, transactionsPerSession) %>%
-  filter(sessionDurationBucket < 500) %>%
-  arrange(desc(sessionDurationBucket))
+         transactionsPerSession = transactionsPerSession/100,
+         sessions = as.numeric(sessions)) %>%
+  arrange(sessionDurationBucket) %>%
+  mutate(`% cumulative sessions` = cumsum(sessions)/sum(sessions)) %>%
+  select(sessionDurationBucket, `% cumulative sessions`, `Conv. Rate`= transactionsPerSession) %>%
+  filter(sessionDurationBucket < 500)
+  
+
 
 # Slide 51: Re-engage Users with High Product Engagement
 se_productdetail <- segment_element("productDetailViews", 
@@ -653,7 +661,7 @@ ga_data_daysSinceLastSession <-
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
                    metrics = c("sessions"), 
-                   dimensions = c("sessionCount", "daysSinceLastSession"),
+                   dimensions = c("sessionCount", "daysSinceLastSession", "deviceCategory"),
                    segments = c(seg_allUsers),
                    anti_sample = TRUE,
                    max = -1)
@@ -662,10 +670,14 @@ ga_data_daysSinceLastSession_table <- ga_data_daysSinceLastSession %>%
   mutate(sessionCount = as.numeric(sessionCount),
          daysSinceLastSession = as.numeric(daysSinceLastSession),
          weight = daysSinceLastSession * sessions) %>%
-  group_by(sessionCount) %>%
+  group_by(sessionCount, deviceCategory) %>%
   summarise(sessions = sum(sessions),
             avgDaysSinceLastSession = sum(weight)/sum(sessions)) %>%
   filter(sessionCount <= 30)
+
+ggplot(ga_data_daysSinceLastSession_table, aes(x=sessionCount, y=daysSinceLastSession)) +
+  geom_bar(stat="identity") + facet_wrap(~deviceCategory) + theme_minimal()
+
 
 # Slide 72: Valuable Users by Long-term Behaviour
 ga_data_freq_CR <- 
@@ -741,7 +753,7 @@ gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_hourday_device_table,
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_weekday_device_table, anchor = "E327")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_valuable_userinterests_table, anchor = "K281")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_valuable_usermarket_table, anchor = "K294")
-gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageDepth_CR_table, anchor = "E340")
+gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_pageDepth_CR_table, anchor = "D340")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sessionDuration_CR_table, anchor = "M340")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_highpdtengagement_table, anchor = "I371")
 gs_edit_cells(myworksheet, ws = "GA Data", input = ga_data_sitesearch_value_table, anchor = "E371")
