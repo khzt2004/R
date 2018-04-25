@@ -675,7 +675,8 @@ ga_data_daysSinceLastSession_table <- ga_data_daysSinceLastSession %>%
             avgDaysSinceLastSession = sum(weight)/sum(sessions)) %>%
   filter(sessionCount <= 30)
 
-ggplot(ga_data_daysSinceLastSession_table, aes(x=sessionCount, y=daysSinceLastSession)) +
+ggplot(ga_data_daysSinceLastSession_table, 
+       aes(x=sessionCount, y=avgDaysSinceLastSession, color=deviceCategory)) +
   geom_bar(stat="identity") + facet_wrap(~deviceCategory) + theme_minimal()
 
 
