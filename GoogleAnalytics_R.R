@@ -93,6 +93,18 @@ for (i in segmentlisting) {
   ga_data_final_segment <- rbind(ga_data_final_segment, ga_data_segment_eg)
 }
 
+ga_data_final_segment1 <- ga_data_final_segment %>%
+  select(segment, yearMonth, deviceCategory, sessions, transactions) %>%
+  mutate(CR = transactions/sessions) %>%
+  group_by(segment, yearMonth, deviceCategory) %>%
+  summarise(CR = sum(CR))
+  
+
+ggplot(ga_data_final_segment1, aes(x = yearMonth, y = segment, fill = CR)) + 
+  geom_tile() +
+  geom_text(aes(label = paste0(round(CR*100,2),"%"))) +
+  scale_fill_continuous(low = "white", high = "green")  +
+  facet_wrap(~deviceCategory, ncol=1)
 
 ## pick a profile with data to query
 ga_id <- account_list[1123,'viewId']
