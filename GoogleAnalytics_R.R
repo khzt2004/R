@@ -10,9 +10,7 @@ ga_auth()
 # ga_auth(new_user = TRUE)
 
 Sys.setenv(GA_AUTH_FILE = "C:/Users/User/Documents/.httr-oauth")
-
-# alternative for mac
-# Sys.setenv(GA_AUTH_FILE = "/Users/Kevin/.httr-oauth")
+# need alternative for mac
 
 account_list <- ga_account_list()
 
@@ -46,10 +44,58 @@ df3 <- data.frame(all_data[3])
 df3 <- df3 %>% mutate(viewID = account_list[2128,'viewName'])
 df_all <- rbind(df1,df2,df3)
 
+# query multiple segments
+segment_for_newusers <- "gaid::-2"
+seg_newusers <- segment_ga4("new Users", segment_id = segment_for_newusers)
+segment_for_returnusers <- "gaid::-3"
+seg_returnusers <- segment_ga4("return Users", segment_id = segment_for_returnusers)
+segment_for_paidusers <- "gaid::-4"
+seg_paidusers <- segment_ga4("paid Users", segment_id = segment_for_paidusers)
+segment_for_organicusers <- "gaid::-5"
+seg_organicusers <- segment_ga4("organic Users", segment_id = segment_for_organicusers)
+segment_for_searchusers <- "gaid::-6"
+seg_searchusers <- segment_ga4("search Users", segment_id = segment_for_searchusers)
+segment_for_directusers <- "gaid::-7"
+seg_directusers <- segment_ga4("direct Users", segment_id = segment_for_directusers)
+segment_for_referralusers <- "gaid::-8"
+seg_referralusers <- segment_ga4("referral Users", segment_id = segment_for_referralusers)
+segment_for_convusers <- "gaid::-9"
+seg_convusers <- segment_ga4("conv Users", segment_id = segment_for_convusers)
+segment_for_transactionusers <- "gaid::-10"
+seg_transactionusers <- segment_ga4("transaction Users", segment_id = segment_for_transactionusers)
+segment_for_mobiletabletusers <- "gaid::-11"
+seg_mobiletabletusers <- segment_ga4("mobiletablet Users", segment_id = segment_for_mobiletabletusers)
+
+segmentlist <- c(seg_allUsers,
+                 seg_newusers,
+                 seg_returnusers,
+                 seg_paidusers,
+                 seg_organicusers,
+                 seg_searchusers,
+                 seg_directusers,
+                 seg_referralusers,
+                 seg_convusers) 
+
+segmentlisting <- c(segmentlist[1:4], segmentlist[5:8])
+
+ga_data_final_segment <- data.frame()
+
+for (i in segmentlisting) {
+  ga_data_segment_eg <- 
+    google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                     date_range = c(startDate2, endDate), 
+                     metrics = c("sessions", "transactions", "transactionRevenue"), 
+                     dimensions = c("yearMonth", "deviceCategory", "userType"),
+                     segments = i,
+                     anti_sample = TRUE,
+                     max = -1)
+  
+  ga_data_final_segment <- rbind(ga_data_final_segment, ga_data_segment_eg)
+}
 
 
 ## pick a profile with data to query
-ga_id <- account_list[1740,'viewId']
+ga_id <- account_list[1123,'viewId']
 
 ## get a list of what metrics and dimensions you can use
 ga_auth()
@@ -75,44 +121,7 @@ seg_defined <- segment_define(sv_simple)
 segment4 <- segment_ga4("simple", user_segment = seg_defined)
 
 
-# shopping stage example
-se_country <- segment_element("country", 
-                       operator = "REGEXP", 
-                       type = "DIMENSION", 
-                       expressions = "Singapore",
-                       scope = "SESSION")
-
-se_shoppingStage_pdtView <- segment_element("shoppingStage", 
-                              operator = "EXACT", 
-                              type = "DIMENSION", 
-                              expressions = "PRODUCT_VIEW",
-                              scope = "SESSION")
-
-se_shoppingStage_addtocart <- segment_element("shoppingStage", 
-                                            operator = "EXACT", 
-                                            type = "DIMENSION", 
-                                            expressions = "ADD_TO_CART",
-                                            scope = "SESSION")
-
-# OR combinations are applied at vector_simple
-sv_simple <- segment_vector_simple(list(list(se_country), list(se_shoppingStage_pdtView)))
-sv_simple_country <- segment_vector_simple(list(list(se_country)))
-
-# AND combinations are applied at segment_define
-seg_defined <- segment_define(list(sv_simple))
-# use session_segment for session scope and user_segment for user scope
-segment4_repeat <- segment_ga4("simple", session_segment = seg_defined)
-
-
-ga_repeat_cust <- google_analytics(ga_id,
-                            date_range = c("2018-02-01","2018-04-06"), 
-                            metrics = c("sessions"), 
-                            dimensions = c("Country"),
-                            segments = c(segment4_repeat),
-                            anti_sample = TRUE,
-                            max = -1)
-
-# v3 segments: semicolon is "AND", a comma is "OR"
+# segments: semicolon is "AND", a comma is "OR"
 
 segment_def_medium <- "sessions::condition::ga:medium=~^(email|referral)$"
 seg_obj_medium <- segment_ga4("test", segment_id = segment_def_medium)
@@ -155,3 +164,5 @@ google_analytics_4(ga_id, #=This is a (dynamic) ViewID parameter
                    #anti_sample = TRUE,
                    max = -1,
                    useResourceQuotas = TRUE)
+
+
