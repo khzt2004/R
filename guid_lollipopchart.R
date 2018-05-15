@@ -5,13 +5,16 @@ library(ggthemes)
 
 
 data <- read_csv("ancillary_chart.csv")
+data <- data %>%
+  mutate(B_AncillaryCategory = case_when(grepl("taxi|taxivan|shuttle", B_AncillaryCategory, ignore.case = TRUE) ~"taxi",
+                                         TRUE ~ (as.character(B_AncillaryCategory))))
 # data_raw <- read_csv("https://raw.githubusercontent.com/khzt2004/R/master/ancillary_chart.csv")
 
 data1 <- data %>%
   select(Market = A_market,
          'Tier Points Level' = 'A_tier_points_level', 3:6) %>%
   mutate(bookingLeadMonths = round(bookingLeadMonths,2)) %>%
-  filter(B_AncillaryCategory == 'car') %>%
+  filter(B_AncillaryCategory == 'hotel') %>%
   group_by(Market) %>%
   summarise(`Booking Lead Months` = round(mean(bookingLeadMonths),2))
 
@@ -27,9 +30,17 @@ ggplot(data1, aes(y=Market, x=`Booking Lead Months`)) +
   theme(plot.margin=unit(rep(30, 4), "pt")) +
   theme(plot.title=element_text(face="bold"))
 
+data2 <- data %>%
+  select(Market = A_market,
+         'Tier Points Level' = 'A_tier_points_level', 3:6) %>%
+  mutate(bookingLeadMonths = round(bookingLeadMonths,2)) %>%
+  filter(B_AncillaryCategory == 'hotel') %>%
+  group_by(`Tier Points Level`) %>%
+  summarise(`Booking Lead Months` = round(mean(bookingLeadMonths),2)) %>%
+  filter(!is.na(`Tier Points Level`))
 
 # breakdown by tier
-ggplot(data1, aes(y=Market, x=`Booking Lead Months`)) + 
+ggplot(data2, aes(y=`Tier Points Level`, x=`Booking Lead Months`)) + 
   geom_lollipop(point.colour="steelblue", point.size=2, horizontal=TRUE) +
   theme_minimal() +
   geom_label(aes(label=`Booking Lead Months`), nudge_x = 0.25, size=3) +
