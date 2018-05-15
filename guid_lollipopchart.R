@@ -14,7 +14,7 @@ data1 <- data %>%
   select(Market = A_market,
          'Tier Points Level' = 'A_tier_points_level', 3:6) %>%
   mutate(bookingLeadMonths = round(bookingLeadMonths,2)) %>%
-  filter(B_AncillaryCategory == 'insurance') %>%
+  filter(B_AncillaryCategory == 'taxi') %>%
   group_by(Market) %>%
   summarise(`Booking Lead Months` = round(mean(bookingLeadMonths),2))
 
@@ -34,7 +34,7 @@ data2 <- data %>%
   select(Market = A_market,
          'Tier Points Level' = 'A_tier_points_level', 3:6) %>%
   mutate(bookingLeadMonths = round(bookingLeadMonths,2)) %>%
-  filter(B_AncillaryCategory == 'insurance') %>%
+  filter(B_AncillaryCategory == 'taxi') %>%
   group_by(`Tier Points Level`) %>%
   summarise(`Booking Lead Months` = round(mean(bookingLeadMonths),2)) %>%
   filter(!is.na(`Tier Points Level`))
@@ -57,8 +57,8 @@ ggplot(data2, aes(y=`Tier Points Level`, x=`Booking Lead Months`)) +
 
 data_hist <- data %>%
 #  filter(grepl("insurance|car|hotel|taxi",B_AncillaryCategory) & !is.na(A_market))
-  filter(grepl("insurance",B_AncillaryCategory) & !is.na(A_market))
+  filter(grepl("car",B_AncillaryCategory) & !is.na(A_market)  )
   
-ggplot(data_hist, aes(x=bookingLeadMonths)) +
+ggplot(data_hist, aes(x=bookingLeadMonths, fill=A_tier_points_level)) +
   geom_histogram(position="identity", colour="grey40", alpha=0.2, bins = 10) +
-  facet_grid(. ~ A_market)
+  facet_grid(.~ A_tier_points_level)
