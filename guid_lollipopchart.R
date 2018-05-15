@@ -5,7 +5,7 @@ library(ggthemes)
 
 
 data <- read_csv("ancillary_chart.csv")
-
+# data_raw <- read_csv("https://raw.githubusercontent.com/khzt2004/R/master/ancillary_chart.csv")
 
 data1 <- data %>%
   select(Market = A_market,
