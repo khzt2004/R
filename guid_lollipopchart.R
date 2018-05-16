@@ -7,7 +7,11 @@ library(ggthemes)
 data <- read_csv("ancillary_chart.csv")
 data <- data %>%
   mutate(B_AncillaryCategory = case_when(grepl("taxi|taxivan|shuttle", B_AncillaryCategory, ignore.case = TRUE) ~"taxi",
-                                         TRUE ~ (as.character(B_AncillaryCategory))))
+                                         TRUE ~ (as.character(B_AncillaryCategory))),
+         A_tier_points_level = case_when(A_tier_points_level == 'ae' ~ "elite",
+                                         A_tier_points_level == 'ag' ~ "gold",
+                                         A_tier_points_level == 'as' ~ "silver",
+                                         A_tier_points_level == 'aj' ~ "base"))
 # data_raw <- read_csv("https://raw.githubusercontent.com/khzt2004/R/master/ancillary_chart.csv")
 
 data1 <- data %>%
@@ -61,4 +65,5 @@ data_hist <- data %>%
   
 ggplot(data_hist, aes(x=bookingLeadMonths, fill=A_tier_points_level)) +
   geom_histogram(position="identity", colour="grey40", alpha=0.2, bins = 10) +
-  facet_grid(.~ A_tier_points_level)
+  facet_grid(.~ A_tier_points_level) + 
+  labs(fill = "Tier Points Level\n")
