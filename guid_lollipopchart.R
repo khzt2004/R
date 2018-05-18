@@ -6,7 +6,8 @@ library(ggthemes)
 
 data <- read_csv("ancillary_chart2.csv")
 data <- data %>%
-  mutate(ancillaryCategory = case_when(grepl("taxi|taxivan|shuttle", productName, ignore.case = TRUE) ~"taxi",
+  mutate(booking_lead_days = abs(booking_lead_days),
+         ancillaryCategory = case_when(grepl("taxi|taxivan|shuttle", productName, ignore.case = TRUE) ~"taxi",
                                        productName == 'car' ~ "car",
                                        productName == 'insurance' ~ "insurance",
                                          TRUE ~ (as.character(ancillaryCategory))),
@@ -60,9 +61,10 @@ ggplot(data2, aes(y=`Tier Points Level`, x=`Booking Lead Days`)) +
 
 data_hist <- data %>%
 #  filter(grepl("insurance|car|hotel|taxi",B_AncillaryCategory) & !is.na(A_market))
-  filter(grepl("insurance", ancillaryCategory) & !is.na(market)  )
+  filter(grepl("taxi", ancillaryCategory) & !is.na(market))
   
-ggplot(data_hist, aes(x=booking_lead_days, fill=tier_points_level)) +
+ggplot(data_hist, aes(x=booking_lead_days, fill=market)) +
   geom_histogram(position="identity", colour="grey40", alpha=0.2, bins = 10) +
-  facet_grid(.~ tier_points_level) + 
+  facet_grid(.~ market) +
+  # facet_wrap(~ market, nrow = 2) +
   labs(title = "Ancillary Product - Car", fill = "Tier Points Level\n")
