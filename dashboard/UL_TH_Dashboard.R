@@ -66,6 +66,7 @@ get_target_query <- paste0("SELECT
                            ")
 
 target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
+target_data <- bq_table_download(bq_project_query(project, get_actuals_query))
 
 # get actuals data by date 
 get_actuals_query <- paste0("WITH SKU_Detail_table AS (SELECT max(upload_date) as Ud, File_Date,	Partner,	Country,	Cat_Level_1,
@@ -165,6 +166,7 @@ Cat_Level_2,	Cat_Level_3,	Cat_Level_4,	Cat_Level_5,	Cat_Level_6,	Product_Name,	B
                             Partnership")
 
 actuals_data <- query_exec(get_actuals_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
+actuals_data <- bq_table_download(bq_project_query(project, get_actuals_query))
 
 # get actuals data by date 
 get_actuals_subcat_query <- paste0("WITH SKU_Detail_table AS (SELECT max(upload_date) as Ud, File_Date,	Partner,	Country,	Cat_Level_1,
@@ -268,6 +270,7 @@ Cat_Level_2,	Cat_Level_3,	Cat_Level_4,	Cat_Level_5,	Cat_Level_6,	Product_Name,	B
                                    Partnership")
 
 actuals_subcat_data <- query_exec(get_actuals_subcat_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
+actuals_subcat_data <- bq_table_download(bq_project_query(project, get_actuals_subcat_query))
 
 # target_data <- read_csv("TH_Monthly_Targets.csv")
 # shopee_lazada <- read_csv("Shopee_Lazada_Ach.csv")
