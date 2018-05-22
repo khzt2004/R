@@ -65,7 +65,6 @@ get_target_query <- paste0("SELECT
                            GROUP BY 1,2,3,4,5,6,7,8)
                            ")
 
-target_data <- query_exec(get_target_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
 target_data <- bq_table_download(bq_project_query(project, get_actuals_query))
 
 # get actuals data by date 
@@ -165,7 +164,6 @@ Cat_Level_2,	Cat_Level_3,	Cat_Level_4,	Cat_Level_5,	Cat_Level_6,	Product_Name,	B
                             # Sub_Category,
                             Partnership")
 
-actuals_data <- query_exec(get_actuals_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
 actuals_data <- bq_table_download(bq_project_query(project, get_actuals_query))
 
 # get actuals data by date 
@@ -269,8 +267,80 @@ Cat_Level_2,	Cat_Level_3,	Cat_Level_4,	Cat_Level_5,	Cat_Level_6,	Product_Name,	B
                                    Sub_Category_Lv3,
                                    Partnership")
 
-actuals_subcat_data <- query_exec(get_actuals_subcat_query, project, destination_table = NULL, max_pages = Inf, use_legacy_sql = FALSE)
 actuals_subcat_data <- bq_table_download(bq_project_query(project, get_actuals_subcat_query))
+
+
+
+brandpivot_query <- paste0("SELECT *
+                           FROM (
+                           SELECT
+                           CAST(date AS date) AS date,
+                           DATE_SUB(CAST(date AS date), INTERVAL 7 DAY) AS seven_days_ago,
+                           DATE_SUB(CAST(date AS date), INTERVAL 1 MONTH) AS previous_month,
+                           SUM(NMV_USD) AS NMV_current,
+                           SUM(Item) AS Item_current,
+                           SUM(PV) AS PV_current,
+                           safe_divide(SUM(Item),
+                           SUM(PV)) AS CR_current,
+                           safe_divide(SUM(NMV_USD),
+                           SUM(Item)) AS ASP_current
+                           FROM
+                           `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
+                           WHERE
+                           _table_suffix BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2018-12-31'))
+                           GROUP BY
+                           1,
+                           2,
+                           3) AS A
+                           LEFT JOIN (
+                           SELECT
+                           #  FORMAT_DATE('%b', CAST(date AS date)) AS month_sevendays,
+                           CAST(date AS date) AS date_sevendays,
+                           SUM(NMV_USD) AS NMV_sevendays,
+                           SUM(Item) AS Item_sevendays,
+                           SUM(PV) AS PV_sevendays,
+                           safe_divide(SUM(Item),
+                           SUM(PV)) AS CR_sevendays,
+                           safe_divide(SUM(NMV_USD),
+                           SUM(Item)) AS ASP_sevendays
+                           FROM
+                           `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
+                           WHERE
+                           _table_suffix BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2018-12-31'))
+                           GROUP BY
+                           1) AS B
+                           ON
+                           A.seven_days_ago = B.date_sevendays
+                           LEFT JOIN (
+                           SELECT
+                           #  FORMAT_DATE('%b', CAST(date AS date)) AS month_previousmonth,
+                           CAST(date AS date) AS date_previousmonth,
+                           SUM(NMV_USD) AS NMV_previousmonth,
+                           SUM(Item) AS Item_previousmonth,
+                           SUM(PV) AS PV_previousmonth,
+                           safe_divide(SUM(Item),
+                           SUM(PV)) AS CR_previousmonth,
+                           safe_divide(SUM(NMV_USD),
+                           SUM(Item)) AS ASP_previousmonth
+                           FROM
+                           `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
+                           WHERE
+                           _table_suffix BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-01-01'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2018-12-31'))
+                           GROUP BY
+                           1) AS C
+                           ON
+                           A.previous_month = C.date_previousmonth")
+
+brandpivot_data <- bq_table_download(bq_project_query(project, brandpivot_query))
+brandpivot_campaigncommercial_data <- brandpivot_data %>%
+  select(1,2,3,9,15, 4:8, 10:14,16:20) %>%
+  gather(metric, value, 6:20) %>%
+  separate(metric, c("metric", "period"), "_") %>%
+  spread(period, value)
+
 
 # target_data <- read_csv("TH_Monthly_Targets.csv")
 # shopee_lazada <- read_csv("Shopee_Lazada_Ach.csv")
@@ -315,28 +385,51 @@ actuals_subcat_data_table <- actuals_subcat_data %>%
   filter(Metric == 'NMV') %>%
   mutate(Month_Week = paste0(Month, " - Week ", Week))
 
+# campaign commercial performance dashboard
+# UL_campaign commercial performance
+# BQ: select * from table
+
+data <- read_csv("brandportal.csv")
+
+data <- data %>%
+  select(-Lazada_URL, -Competitor_URL)
+
+data <- data %>%
+  gather(metric, value, 7:14) %>%
+  mutate(value=replace(value, value=='-', NA))
+
+write_csv(data, "brandportal_pivot.csv")
+
 # Variables for the BigQuery upload portion
 destinationProject <- 'unified-welder-172709'
 destinationDataset <- 'TH_Marketing_Performance_Dashboard_Targets'
 reportName <- 'BQ_Target_Actuals'
 subcatreportName <- 'actuals_subcat_data_table'
 ASP_CR_reportName <- 'ASP_CR_combined_master_table'
+Campaign_commercial_reportName <- 'brandpivot_test_joinedtable'
 
 # Check if the table exists, if table exists, then delete the table
-tryCatch(delete_table(destinationProject, destinationDataset, reportName),
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, reportName)),
          error = function(e){
            print(paste0(reportName, " not available for deletion"))
          })
 
-tryCatch(delete_table(destinationProject, destinationDataset, subcatreportName),
+
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, subcatreportName)),
          error = function(e){
            print(paste0(reportName, " not available for deletion"))
          })
 
-tryCatch(delete_table(destinationProject, destinationDataset, ASP_CR_reportName),
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, ASP_CR_reportName)),
          error = function(e){
            print(paste0(reportName, " not available for deletion"))
          })
+
+tryCatch(bq_table_delete(bq_table(project, targets_dataset, Campaign_commercial_reportName)),
+         error = function(e){
+           print(paste0(reportName, " not available for deletion"))
+         })
+
 
 
 # Upload the table into big query
@@ -354,3 +447,11 @@ tryCatch(insert_upload_job(destinationProject, destinationDataset, ASP_CR_report
          error = function(e){
            print(paste0(reportName, " failed to upload"))
          })
+
+# bq_table_upload(bq_table(project, targets_dataset, "brandpivot_test_joinedtable"), brandpivot_campaigncommercial_data)
+
+tryCatch(insert_upload_job(destinationProject, destinationDataset, Campaign_commercial_reportName, brandpivot_campaigncommercial_data),
+         error = function(e){
+           print(paste0(reportName, " failed to upload"))
+         })
+
