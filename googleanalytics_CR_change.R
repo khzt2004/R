@@ -182,7 +182,6 @@ ga_data_country_baselinegroup <- ga_data_country_start %>%
          `Share of Sessions` = 'shareofSessions')
 
 
-# needs refining
 # apply segment to campaigns - find top 5 contributing campaigns 
 ga_data_campaigns_start <- 
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
@@ -211,4 +210,37 @@ ga_data_campaigns_baselinegroup <- ga_data_campaigns_start %>%
             shareofSessions = round((sum(sessions)/sum(sessionstotal))*100,2)) %>%
   filter(campaign != '(not set)') %>%
   top_n(3, shareofSessions)
+
+
+# apply segment to landing pages - find top contributing landing pages
+ga_data_LP_start <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate),
+                   metrics = c("sessions", "transactions"), 
+                   dimensions = c("landingPagePath"),
+                   segments = c(segment_trans_channelgroup),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_LP_end <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate2, endDate2),
+                   metrics = c("sessions", "transactions"), 
+                   dimensions = c("landingPagePath"),
+                   segments = c(segment_trans_channelgroup),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_LP_baselinegroup <- ga_data_LP_start %>%
+  select(landingPagePath, session_start = "sessions", transactions_start = 'transactions') %>%
+  left_join(ga_data_LP_end, by="landingPagePath") %>%
+  mutate(sessionstotal = sum(sessions, na.rm=TRUE)) %>%
+  group_by(landingPagePath) %>%
+  summarise(transactionsPerSessionchg = round(((sum(transactions)/sum(sessions))/(sum(transactions_start)/sum(session_start))-1)*100, 2),
+            shareofSessions = round((sum(sessions)/sum(sessionstotal))*100,2)) %>%
+  filter(landingPagePath != '(not set)') %>%
+  top_n(5, shareofSessions) %>%
+  select(`Landing Page` = 'landingPagePath',
+         `% change in CR` = 'transactionsPerSessionchg',
+         `Share of Sessions` = 'shareofSessions')
 
