@@ -389,17 +389,6 @@ actuals_subcat_data_table <- actuals_subcat_data %>%
 # UL_campaign commercial performance
 # BQ: select * from table
 
-data <- read_csv("brandportal.csv")
-
-data <- data %>%
-  select(-Lazada_URL, -Competitor_URL)
-
-data <- data %>%
-  gather(metric, value, 7:14) %>%
-  mutate(value=replace(value, value=='-', NA))
-
-write_csv(data, "brandportal_pivot.csv")
-
 # Variables for the BigQuery upload portion
 destinationProject <- 'unified-welder-172709'
 destinationDataset <- 'TH_Marketing_Performance_Dashboard_Targets'
