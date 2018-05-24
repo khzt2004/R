@@ -339,7 +339,8 @@ brandpivot_campaigncommercial_data <- brandpivot_data %>%
   select(1,2,3,9,15, 4:8, 10:14,16:20) %>%
   gather(metric, value, 6:20) %>%
   separate(metric, c("metric", "period"), "_") %>%
-  spread(period, value)
+  spread(period, value) %>%
+  select(1:6, present ="current", 8:9)
 
 
 # target_data <- read_csv("TH_Monthly_Targets.csv")
@@ -389,24 +390,13 @@ actuals_subcat_data_table <- actuals_subcat_data %>%
 # UL_campaign commercial performance
 # BQ: select * from table
 
-data <- read_csv("brandportal.csv")
-
-data <- data %>%
-  select(-Lazada_URL, -Competitor_URL)
-
-data <- data %>%
-  gather(metric, value, 7:14) %>%
-  mutate(value=replace(value, value=='-', NA))
-
-write_csv(data, "brandportal_pivot.csv")
-
 # Variables for the BigQuery upload portion
 destinationProject <- 'unified-welder-172709'
 destinationDataset <- 'TH_Marketing_Performance_Dashboard_Targets'
 reportName <- 'BQ_Target_Actuals'
 subcatreportName <- 'actuals_subcat_data_table'
 ASP_CR_reportName <- 'ASP_CR_combined_master_table'
-Campaign_commercial_reportName <- 'brandpivot_test_joinedtable'
+Campaign_commercial_reportName <- 'brandpivot_joinedtable'
 
 # Check if the table exists, if table exists, then delete the table
 tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, reportName)),
@@ -448,7 +438,7 @@ tryCatch(insert_upload_job(destinationProject, destinationDataset, ASP_CR_report
            print(paste0(reportName, " failed to upload"))
          })
 
-# bq_table_upload(bq_table(project, targets_dataset, "brandpivot_test_joinedtable"), brandpivot_campaigncommercial_data)
+# bq_table_upload(bq_table(project, targets_dataset, "brandpivot_joinedtable"), brandpivot_campaigncommercial_data)
 
 tryCatch(insert_upload_job(destinationProject, destinationDataset, Campaign_commercial_reportName, brandpivot_campaigncommercial_data),
          error = function(e){
