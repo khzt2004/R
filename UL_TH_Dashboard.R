@@ -339,7 +339,8 @@ brandpivot_campaigncommercial_data <- brandpivot_data %>%
   select(1,2,3,9,15, 4:8, 10:14,16:20) %>%
   gather(metric, value, 6:20) %>%
   separate(metric, c("metric", "period"), "_") %>%
-  spread(period, value)
+  spread(period, value) %>%
+  select(1:6, present ="current", 8:9)
 
 
 # target_data <- read_csv("TH_Monthly_Targets.csv")
