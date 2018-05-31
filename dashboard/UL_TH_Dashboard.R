@@ -370,7 +370,7 @@ shopee_lazada_master <- actuals_data %>%
 
 combined_Target_Ach_master <- shopee_lazada_master %>%
   left_join(target_data, by = c("Year", "Country", "Month", "Channel", 
-                                # "Category", 
+                                "Category", 
                                 "Partnership", 
                                 "Metric")) %>%
   mutate(pct_Achieved = Achieved/Target) %>%
