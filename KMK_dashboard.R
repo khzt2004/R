@@ -116,6 +116,15 @@ cat_classification_sport <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_
 }) 
 
 
+cat_classification_entertainment <- map(worksheet2_L6_googletrends[1:5] , function(x) {
+
+ifelse(grep(Etalase_news_topiclist_tbl_imagecheck$topics_regex, x, ignore.case = TRUE,
+
+fixed = FALSE),
+
+"TRUE", "FALSE")
+
+})
 
 
 
