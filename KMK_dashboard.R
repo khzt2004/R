@@ -75,20 +75,20 @@ mydata_extracted <- as.data.frame(unlist(mydata))
 colnames(mydata_extracted)<- c("extracted_images")
 
 Etalase_news_topiclist_tbl_trim_extracted <- cbind(Etalase_news_topiclist_tbl_trim,
-                                         mydata_extracted)
+                                                   mydata_extracted)
 
 Etalase_news_topiclist_tbl_imagecheck <-  Etalase_news_topiclist_tbl_trim_extracted %>% 
   mutate(imagecheck = case_when(!is.na(extracted_images) ~ as.character(extracted_images),
                                 is.na(extracted_images) ~ "https://scontent.fcgk12-1.fna.fbcdn.net/v/t1.0-9/27750288_10155438543847712_8698226800673513911_n.jpg?_nc_eui2=v1%3AAeEnhO1cv42QrSzREQ_thhuQebjgnuOmDGp-K0sq90qrewZ94AbQQYJ-LJPI5vWCDzM1MMb6GlA0OtUT-Vug9ajj-XwDDCyNHAciM8vGnffZhQ&oh=6b1ac1025f915065af80fac0c8fe0681&oe=5B4A8D96")) %>%
-#  mutate(topics_regex = paste0('\\b', topics, '\\b'))
-#Etalase_news_topiclist_tbl_imagecheck$topics_regex = gsub(' ', '\\\\b|\\\\b', Etalase_news_topiclist_tbl_imagecheck$topics_regex)
-   mutate(topics_regex = paste0('^', topics))
+  #  mutate(topics_regex = paste0('\\b', topics, '\\b'))
+  #Etalase_news_topiclist_tbl_imagecheck$topics_regex = gsub(' ', '\\\\b|\\\\b', Etalase_news_topiclist_tbl_imagecheck$topics_regex)
+  mutate(topics_regex = paste0('^', topics))
 Etalase_news_topiclist_tbl_imagecheck$topics_regex = gsub(' ', '|^', Etalase_news_topiclist_tbl_imagecheck$topics_regex)
 
 cat_classification_all <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
   ALL <- ifelse(grep(x, worksheet2_L6_googletrends$ALL, ignore.case = TRUE,
-                    fixed = FALSE),
-              "TRUE", "FALSE")
+                     fixed = FALSE),
+                "TRUE", "FALSE")
 }) 
 
 cat_classification_news <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
@@ -116,16 +116,10 @@ cat_classification_sport <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_
 }) 
 
 
-cat_classification_entertainment <- map(worksheet2_L6_googletrends[1:5] , function(x) {
-
-ifelse(grep(Etalase_news_topiclist_tbl_imagecheck$topics_regex, x, ignore.case = TRUE,
-
-fixed = FALSE),
-
-"TRUE", "FALSE")
-
+cat_classification_sport <- lapply(worksheet2_L6_googletrends[1:5], function(y) {
+  lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
+  ifelse(grep(x, y, ignore.case = TRUE,
+                       fixed = FALSE),
+                  "TRUE", "FALSE")
+}) 
 })
-
-
-
-
