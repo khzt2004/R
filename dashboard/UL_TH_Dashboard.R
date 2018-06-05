@@ -65,7 +65,7 @@ get_target_query <- paste0("SELECT
                            GROUP BY 1,2,3,4,5,6,7,8)
                            ")
 
-target_data <- bq_table_download(bq_project_query(project, get_actuals_query))
+target_data <- bq_table_download(bq_project_query(project, get_target_query))
 
 # get actuals data by date 
 get_actuals_query <- paste0("WITH SKU_Detail_table AS (SELECT max(upload_date) as Ud, File_Date,	Partner,	Country,	Cat_Level_1,
@@ -343,8 +343,6 @@ brandpivot_campaigncommercial_data <- brandpivot_data %>%
   select(1:6, present ="current", 8:9)
 
 
-# target_data <- read_csv("TH_Monthly_Targets.csv")
-# shopee_lazada <- read_csv("Shopee_Lazada_Ach.csv")
 target_data <- target_data %>%
   mutate(Upload_Date = as.Date(Upload_Date, "%d/%m/%Y")) %>%
   filter(Upload_Date == max(Upload_Date)) %>%
