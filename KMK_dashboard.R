@@ -20,6 +20,7 @@ googlenews_urlsnippet_start <- "https://news.google.com/news/search/section/q/"
 googlenews_urlsnippet_end <- "?hl=id&gl=ID&ned=id_id"
 googletrends_urlsnippet_start <- "https://trends.google.com/trends/explore?q="
 googletrends_urlsnippet_end <- "&geo=ID&date=now%201-d#RELATED_QUERIES"
+googlenews_url_wksheet4 <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
 
 Etalase_news_topiclist <- Etalase_news %>% 
   gs_read_cellfeed(ws = '[RAW] OTHER', range = "A40:A42") %>%
@@ -45,9 +46,19 @@ Etalase_news_topiclist_tbl <- Etalase_news_topiclist_tbl %>%
 Etalase_news_topiclist_tbl_trim <- as.data.frame(str_trim(Etalase_news_topiclist_tbl$topics))
 colnames(Etalase_news_topiclist_tbl_trim)<- c("topics")
 Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
+  # filter the first 19 topics
+  filter(grepl('^1.|^2\\.|^3.|^4.|^5.|^6.|^7.|^8.|^9.', topics)) %>% 
   mutate(topics = str_replace(topics, '. ', ':')) %>%
   separate(topics, c('key', 'topics'), ":") %>%
   select(topics)
+
+# https://stackoverflow.com/questions/6442430/xpath-to-get-node-containing-text
+g_news_wksheet4_url <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
+g_news_wksheet4_url1 <- read_html(g_news_wksheet4_url)
+googlenews_url1_extract <- xml_text(xml_find_all(g_news_wksheet4_url1, '//div[contains(@class, "To2ZZb u9jkpc hpDt6e DbQnIe rrijPb R7GTQ keNKEd")]'))
+
+
+rbind
 
 Etalase_news_topiclist_tbl_trim$lowertopics <- tolower(Etalase_news_topiclist_tbl_trim$topics)
 Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
@@ -59,11 +70,6 @@ Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
          googletrends_url = paste0(googletrends_urlsnippet_start,
                                    lowertopics,
                                    googletrends_urlsnippet_end))
-
-# url <- "https://news.google.com/news/search/section/q/nba%20finals%202018?hl=id&gl=ID&ned=id_id"
-url <- "https://news.google.com/news/search/section/q/the1975..com?hl=id&gl=ID&ned=id_id"
-url1 <- read_html(url)
-googlenews_img_extract <- xml_text(xml_find_all(url1, '//img/@src'))[1]
 
 mydata <- lapply(Etalase_news_topiclist_tbl_trim$googlenews_url, function(x) {
   url1 <- read_html(x)
@@ -85,38 +91,9 @@ Etalase_news_topiclist_tbl_imagecheck <-  Etalase_news_topiclist_tbl_trim_extrac
   mutate(topics_regex = paste0('^', topics))
 Etalase_news_topiclist_tbl_imagecheck$topics_regex = gsub(' ', '|^', Etalase_news_topiclist_tbl_imagecheck$topics_regex)
 
-cat_classification_all <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
-  ALL <- ifelse(grep(x, worksheet2_L6_googletrends$ALL, ignore.case = TRUE,
-                     fixed = FALSE),
-                "TRUE", "FALSE")
-}) 
-
-cat_classification_news <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
-  NEWS <- ifelse(grep(x, worksheet2_L6_googletrends$NEWS, ignore.case = TRUE,
-                      fixed = FALSE),
-                 "TRUE", "FALSE")
-}) 
-
-cat_classification_entertainment <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
-  ENTERTAINMENT <- ifelse(grep(x, worksheet2_L6_googletrends$ENTERTAINMENT, ignore.case = TRUE,
-                               fixed = FALSE),
-                          "TRUE", "FALSE")
-})
-
-cat_classification_lifestyle <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
-  LIFESTYLE <- ifelse(grep(x, worksheet2_L6_googletrends$LIFESTYLE, ignore.case = TRUE,
-                           fixed = FALSE),
-                      "TRUE", "FALSE")
-}) 
-
-cat_classification_sport <- lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
-  SPORT <- ifelse(grep(x, worksheet2_L6_googletrends$SPORT, ignore.case = TRUE,
-                       fixed = FALSE),
-                  "TRUE", "FALSE")
-}) 
 
 
-cat_classification_sport <- lapply(worksheet2_L6_googletrends[1:5], function(y) {
+cat_classification_table <- lapply(worksheet2_L6_googletrends[1:5], function(y) {
   lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
   ifelse(grep(x, y, ignore.case = TRUE,
                        fixed = FALSE),
