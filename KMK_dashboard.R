@@ -107,6 +107,7 @@ cat_classification_table <- lapply(worksheet2_L6_googletrends[1:5], function(y) 
                   "TRUE", "FALSE")
 }) 
 })
+
 cat_table <- as_data_frame(cat_classification_table) 
 cat_table <- cat_table %>%
   mutate(status = case_when(grepl('true|TRUE', ALL) ~ 'ALL',
@@ -115,3 +116,6 @@ cat_table <- cat_table %>%
                             grepl('true|TRUE', LIFESTYLE) ~ 'LIFESTYLE',
                             grepl('true|TRUE', SPORT) ~ 'SPORT',
                             TRUE ~ 'NEW ENTRY'))
+
+Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_imagecheck,
+                                                cat_table)
