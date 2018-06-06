@@ -119,3 +119,22 @@ cat_table <- cat_table %>%
 
 Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_imagecheck,
                                                 cat_table)
+
+Etalase_news_topiclist_tbl_statuscheck <- Etalase_news_topiclist_tbl_statuscheck %>%
+  mutate(image_display = case_when(imagecheck == 'https://lh3.googleusercontent.com/JDFOyo903E9WGstK0YhI2ZFOKR3h4qDxBngX5M8XJVBZFKzOBoxLmk3OVlgNw9SOE-HfkNgb=w48' ~ 'https://www.airportrampequipment.com/8903167/assets/images/product/image-250x250.gif',
+                                   TRUE ~ imagecheck))
+
+# regex for info-2
+readUrl <- function(url) {
+  tryCatch(
+  xml_text(xml_find_all(read_html(url), '//*[@id="main"]/div/div/div[1]/div/p/text()'))[1]
+  , error = function(e){NA}
+  )
+}
+
+mydata_info2 <- lapply(Etalase_news_topiclist_tbl_statuscheck$tag_url, readUrl)
+mydata_extracted_info2 <- as.data.frame(unlist(mydata_info2))
+colnames(mydata_extracted_info2)<- c("info-2")
+Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_statuscheck,
+                                                mydata_extracted_info2)
+
