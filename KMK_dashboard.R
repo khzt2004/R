@@ -49,14 +49,21 @@ Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
   # filter the first 19 topics
   filter(grepl('^1.|^2\\.|^3.|^4.|^5.|^6.|^7.|^8.|^9.', topics)) %>% 
   mutate(topics = str_replace(topics, '. ', ':')) %>%
-  separate(topics, c('key', 'topics'), ":") %>%
+  separate(topics, c('key', 'topics'), ":", extra= "merge") %>%
   select(topics)
 
-# https://stackoverflow.com/questions/6442430/xpath-to-get-node-containing-text
-g_news_wksheet4_url <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
-g_news_wksheet4_url1 <- read_html(g_news_wksheet4_url)
-googlenews_url1_extract <- xml_text(xml_find_all(g_news_wksheet4_url1, '//div[contains(@class, "To2ZZb u9jkpc hpDt6e DbQnIe rrijPb R7GTQ keNKEd")]'))
+# get data from google sheets until xpath method works
+worksheet4_L6_googletrends <- L6_googletrends %>% 
+  gs_read_cellfeed(ws = '4', range = "A4:A11") %>%
+  select(col, row, value) %>%
+  spread(col, value)
 
+# https://stackoverflow.com/questions/6442430/xpath-to-get-node-containing-text
+# g_news_wksheet4_url <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
+# g_news_wksheet4_url1 <- read_html(g_news_wksheet4_url, encoding = "Windows-1252")
+# googlenews_url1_extract <- xml_text(xml_find_all(g_news_wksheet4_url1, "//div/div/div/div/div/div/span/span"))
+
+a <- as.data.frame(salary_links)
 
 rbind
 
