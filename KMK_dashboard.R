@@ -54,18 +54,18 @@ Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
 
 # get data from google sheets until xpath method works
 worksheet4_L6_googletrends <- L6_googletrends %>% 
-  gs_read_cellfeed(ws = '4', range = "A4:A11") %>%
+  gs_read_cellfeed(ws = '4', range = "A4:A9") %>%
   select(col, row, value) %>%
-  spread(col, value)
+  spread(col, value) %>%
+  select(topics ="1")
 
 # https://stackoverflow.com/questions/6442430/xpath-to-get-node-containing-text
 # g_news_wksheet4_url <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
 # g_news_wksheet4_url1 <- read_html(g_news_wksheet4_url, encoding = "Windows-1252")
 # googlenews_url1_extract <- xml_text(xml_find_all(g_news_wksheet4_url1, "//div/div/div/div/div/div/span/span"))
 
-a <- as.data.frame(salary_links)
-
-rbind
+Etalase_news_topiclist_tbl_trim <- rbind(Etalase_news_topiclist_tbl_trim, 
+                                                worksheet4_L6_googletrends)
 
 Etalase_news_topiclist_tbl_trim$lowertopics <- tolower(Etalase_news_topiclist_tbl_trim$topics)
 Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
@@ -107,3 +107,11 @@ cat_classification_table <- lapply(worksheet2_L6_googletrends[1:5], function(y) 
                   "TRUE", "FALSE")
 }) 
 })
+cat_table <- as_data_frame(cat_classification_table) 
+cat_table <- cat_table %>%
+  mutate(status = case_when(grepl('true|TRUE', ALL) ~ 'ALL',
+                            grepl('true|TRUE', NEWS) ~ 'NEWS',
+                            grepl('true|TRUE', ENTERTAINMENT) ~ 'ENTERTAINMENT',
+                            grepl('true|TRUE', LIFESTYLE) ~ 'LIFESTYLE',
+                            grepl('true|TRUE', SPORT) ~ 'SPORT',
+                            TRUE ~ 'NEW ENTRY'))
