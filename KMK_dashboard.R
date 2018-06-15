@@ -21,9 +21,11 @@ googlenews_urlsnippet_end <- "?hl=id&gl=ID&ned=id_id"
 googletrends_urlsnippet_start <- "https://trends.google.com/trends/explore?q="
 googletrends_urlsnippet_end <- "&geo=ID&date=now%201-d#RELATED_QUERIES"
 googlenews_url_wksheet4 <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
+trends_monitoring_dash <- gs_key("1mV1X6xt9vf1L7VEsWafkVuWh1sXfDMp9dYNWXpL5HtQ")
 
-Etalase_news_topiclist <- Etalase_news %>% 
-  gs_read_cellfeed(ws = '[RAW] OTHER', range = "A40:A42") %>%
+
+Etalase_news_topiclist <- trends_monitoring_dash %>% 
+  gs_read_cellfeed(ws = 'Sheet1', range = "B7:B7") %>%
   select(value)
 
 worksheet2_L6_googletrends <- L6_googletrends %>% 
@@ -71,14 +73,14 @@ Etalase_news_topiclist_tbl_trim$lowertopics <- tolower(Etalase_news_topiclist_tb
 Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
   mutate(lowertopics = str_replace_all(lowertopics, ' ', '-')) %>%
   mutate(tag_url = paste0(liputan6_tag, lowertopics)) %>%
-  mutate(googlenews_url = paste0(googlenews_urlsnippet_start,
+  mutate(competitor_googlenews_url = paste0(googlenews_urlsnippet_start,
                                  lowertopics,
                                  googlenews_urlsnippet_end),
          googletrends_url = paste0(googletrends_urlsnippet_start,
                                    lowertopics,
                                    googletrends_urlsnippet_end))
 
-mydata <- lapply(Etalase_news_topiclist_tbl_trim$googlenews_url, function(x) {
+mydata <- lapply(Etalase_news_topiclist_tbl_trim$competitor_googlenews_url, function(x) {
   url1 <- read_html(x)
   googlenews_img_extract <- xml_text(xml_find_all(url1, '//img/@src'))[1]
   return(googlenews_img_extract)
@@ -115,8 +117,19 @@ cat_table <- cat_table %>%
                             grepl('true|TRUE', ENTERTAINMENT) ~ 'ENTERTAINMENT',
                             grepl('true|TRUE', LIFESTYLE) ~ 'LIFESTYLE',
                             grepl('true|TRUE', SPORT) ~ 'SPORT',
-                            TRUE ~ 'NEW ENTRY'))
+                            TRUE ~ 'NEW ENTRY'),
+         ALL = case_when(ALL != 'TRUE' ~ 'FALSE',
+                         TRUE ~ 'TRUE'),
+         NEWS = case_when(NEWS != 'TRUE' ~ 'FALSE',
+                          TRUE ~ 'TRUE'),
+         ENTERTAINMENT = case_when(ENTERTAINMENT != 'TRUE' ~ 'FALSE',
+                                   TRUE ~ 'TRUE'),
+         LIFESTYLE = case_when(LIFESTYLE != 'TRUE' ~ 'FALSE',
+                               TRUE ~ 'TRUE'),
+         SPORT = case_when(SPORT != 'TRUE' ~ 'FALSE',
+                           TRUE ~ 'TRUE'))
 
+  
 Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_imagecheck,
                                                 cat_table)
 
@@ -132,9 +145,64 @@ readUrl <- function(url) {
   )
 }
 
+# ***** 15 June: need to force into character*****
 mydata_info2 <- lapply(Etalase_news_topiclist_tbl_statuscheck$tag_url, readUrl)
 mydata_extracted_info2 <- as.data.frame(unlist(mydata_info2))
-colnames(mydata_extracted_info2)<- c("info-2")
+mydata_extracted_info2 <- mydata_extracted_info2 %>% 
+  select(info_2 = `unlist(mydata_info2)`)
+
+mydata_extracted_info2$info_2 <- as.character(mydata_extracted_info2$info_2)
+
 Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_statuscheck,
                                                 mydata_extracted_info2)
+
+
+# create table for popular topic rankings
+# ***** 15 June: check if need to scrape from original source or reference spreadsheets*****
+Topic_ranking_top3 <- Etalase_news %>% 
+  gs_read_cellfeed(ws = '[RAW] DETIK', range = "A2:D4") %>%
+  select(value)
+
+Topic_ranking_top3_tbl <- Topic_ranking_top3 %>% 
+  mutate(Type = case_when(grepl('https', value) ~ 'Link',
+                          TRUE ~ 'Title'),
+         number = 1:6) %>%
+  spread(Type, value) %>%
+  select(Title, Link) %>%
+  mutate(Link = lead(Link)) %>%
+  filter(!is.na(Title))
+
+
+
+
+
+# upload to Bigquery
+# Variables for the BigQuery upload portion
+destinationProject <- "analisis-production"
+destinationDataset <- "sparkline"
+contentreportName <- 'keywords_dashboard_content'
+rankingsreportName <- 'keywords_dasboard_ranking'
+
+
+# Check if the table exists, if table exists, then delete the table
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, contentreportName)),
+         error = function(e){
+           print(paste0(contentreportName, " not available for deletion"))
+         })
+
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, rankingsreportName)),
+         error = function(e){
+           print(paste0(rankingsreportName, " not available for deletion"))
+         })
+
+# Upload the table into big query
+tryCatch(insert_upload_job(destinationProject, destinationDataset, contentreportName, Etalase_news_topiclist_tbl_statuscheck[18]),
+         error = function(e){
+           print(paste0(contentreportName, " failed to upload"))
+         })
+
+tryCatch(insert_upload_job(destinationProject, destinationDataset, rankingsreportName, XXX),
+         error = function(e){
+           print(paste0(rankingsreportName, " failed to upload"))
+         })
 
