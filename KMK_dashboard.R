@@ -159,6 +159,12 @@ Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_statu
 
 # create table for popular topic rankings
 # ***** 15 June: check if need to scrape from original source or reference spreadsheets*****
+
+url_detik_berita <- read_html("http://news.detik.com/berita")
+detik_berita_extract <- as.data.frame(xml_text(xml_find_all(url_detik_berita, "//span[@class='normal']")))
+detik_berita_href_extract <- as.data.frame(xml_text(xml_find_all(url_detik_berita, "//*[@id='box-pop']/ul/li/article/a/@href")))
+
+
 Topic_ranking_top3 <- Etalase_news %>% 
   gs_read_cellfeed(ws = '[RAW] DETIK', range = "A2:D4") %>%
   select(value)
