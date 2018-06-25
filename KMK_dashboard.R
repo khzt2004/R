@@ -145,7 +145,6 @@ readUrl <- function(url) {
   )
 }
 
-# ***** 15 June: need to force into character*****
 mydata_info2 <- lapply(Etalase_news_topiclist_tbl_statuscheck$tag_url, readUrl)
 mydata_extracted_info2 <- as.data.frame(unlist(mydata_info2))
 mydata_extracted_info2 <- mydata_extracted_info2 %>% 
@@ -157,37 +156,39 @@ Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_statu
                                                 mydata_extracted_info2)
 
 
-# create table for popular topic rankings
+# create table for popular topic rankings (desktop/mobile)
 # ***** 15 June: check if need to scrape from original source or reference spreadsheets*****
 
 url_detik_berita <- read_html("http://news.detik.com/berita")
-detik_berita_extract <- as.data.frame(xml_text(xml_find_all(url_detik_berita, "//span[@class='normal']")))
+detik_berita_extract <- unlist(xml_text(xml_find_all(url_detik_berita, "//span[@class='normal']")))
+detik_berita_extract <- as.data.frame(detik_berita_extract)
 detik_berita_href_extract <- as.data.frame(xml_text(xml_find_all(url_detik_berita, "//*[@id='box-pop']/ul/li/article/a/@href")))
+detik_berita_fulltable <- cbind(as.data.frame(detik_berita_extract[1:3,])
+                                ,as.data.frame(detik_berita_href_extract[1:3,]))
 
+colnames(detik_berita_fulltable)[1:2] <- c("title", "link")
 
-Topic_ranking_top3 <- Etalase_news %>% 
-  gs_read_cellfeed(ws = '[RAW] DETIK', range = "A2:D4") %>%
-  select(value)
+# create table for line popular topic rankings
+line_url_detik_berita <- read_html("http://today.line.me/ID/pc/main/100271")
+line_detik_berita_extract <- unlist(xml_text(xml_find_all(line_url_detik_berita, "//a/@href [contains(., 'article')]")))
+line_detik_berita_extract <- as.data.frame(line_detik_berita_extract)
+line_detik_berita_extract_table <- line_detik_berita_extract %>% 
+  mutate(clean1 = gsub('/id/pc/article/', '', line_detik_berita_extract)) %>%
+  mutate(clean2 = gsub('\\+', ' ', line_detik_berita_extract)) %>%
+  separate(clean2, c('clean2_first', 'clean2_second'), "-", extra= "merge") %>% 
+  mutate(clean3 = gsub('https://today.line.me/id/pc/article/', '', clean2_first)) %>%
+  select(title = "clean3", link = "line_detik_berita_extract") %>% 
+  filter(row_number()<= 2)
 
-Topic_ranking_top3_tbl <- Topic_ranking_top3 %>% 
-  mutate(Type = case_when(grepl('https', value) ~ 'Link',
-                          TRUE ~ 'Title'),
-         number = 1:6) %>%
-  spread(Type, value) %>%
-  select(Title, Link) %>%
-  mutate(Link = lead(Link)) %>%
-  filter(!is.na(Title))
-
-
-
-
+popular_topics_fulltable <- rbind(detik_berita_fulltable, 
+                                  line_detik_berita_extract_table)
 
 # upload to Bigquery
 # Variables for the BigQuery upload portion
 destinationProject <- "analisis-production"
 destinationDataset <- "sparkline"
 contentreportName <- 'keywords_dashboard_content'
-rankingsreportName <- 'keywords_dasboard_ranking'
+rankingsreportName <- 'popular_topics_fulltable'
 
 
 # Check if the table exists, if table exists, then delete the table
@@ -202,12 +203,12 @@ tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, rankin
          })
 
 # Upload the table into big query
-tryCatch(insert_upload_job(destinationProject, destinationDataset, contentreportName, Etalase_news_topiclist_tbl_statuscheck[18]),
+tryCatch(insert_upload_job(destinationProject, destinationDataset, contentreportName, Etalase_news_topiclist_tbl_statuscheck),
          error = function(e){
            print(paste0(contentreportName, " failed to upload"))
          })
 
-tryCatch(insert_upload_job(destinationProject, destinationDataset, rankingsreportName, XXX),
+tryCatch(insert_upload_job(destinationProject, destinationDataset, rankingsreportName, popular_topics_fulltable),
          error = function(e){
            print(paste0(rankingsreportName, " failed to upload"))
          })
