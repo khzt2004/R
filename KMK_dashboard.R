@@ -9,7 +9,7 @@ library(RCurl)
 library(XML)
 library(xml2)
 
-# get data from Googlesheets - what if owner of google sheet is different
+# get data from Googlesheets - what if owner of google sheet is different ------
 my_sheets <- gs_ls()
 
 Etalase_news <- gs_key("1dD18QMp3_VCVpFwKYeoG87RAM6_qlAEWM41NKVJgbrA")
@@ -23,11 +23,12 @@ googletrends_urlsnippet_end <- "&geo=ID&date=now%201-d#RELATED_QUERIES"
 googlenews_url_wksheet4 <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
 trends_monitoring_dash <- gs_key("1mV1X6xt9vf1L7VEsWafkVuWh1sXfDMp9dYNWXpL5HtQ")
 
-
+# get list of topics from trends monitoring dashboard ----------------------
 Etalase_news_topiclist <- trends_monitoring_dash %>% 
   gs_read_cellfeed(ws = 'Sheet1', range = "B7:B7") %>%
   select(value)
 
+# get list of keywords to classify urls against ----------------------------
 worksheet2_L6_googletrends <- L6_googletrends %>% 
   gs_read_cellfeed(ws = '2', range = "A1:E500") %>%
   select(col, row, value) %>%
@@ -37,6 +38,7 @@ worksheet2_L6_googletrends <- L6_googletrends %>%
   filter(!((ALL=="ALL" & NEWS=="NEWS" & ENTERTAINMENT == "ENTERTAINMENT" 
             & LIFESTYLE == "LIFESTYLE" & SPORT == "SPORT")))
 
+# wrangle topic list into dataframe format ----------------------------------
 Etalase_news_topiclist_tbl <- do.call(rbind, str_split(Etalase_news_topiclist$value, '\n')) %>%
   t()
 colnames(Etalase_news_topiclist_tbl)<- c("topics")
@@ -54,7 +56,7 @@ Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
   separate(topics, c('key', 'topics'), ":", extra= "merge") %>%
   select(topics)
 
-# get data from google sheets until xpath method works
+# get data from google sheets until xpath method works ----------------------
 worksheet4_L6_googletrends <- L6_googletrends %>% 
   gs_read_cellfeed(ws = '4', range = "A4:A9") %>%
   select(col, row, value) %>%
@@ -66,6 +68,7 @@ worksheet4_L6_googletrends <- L6_googletrends %>%
 # g_news_wksheet4_url1 <- read_html(g_news_wksheet4_url, encoding = "Windows-1252")
 # googlenews_url1_extract <- xml_text(xml_find_all(g_news_wksheet4_url1, "//div/div/div/div/div/div/span/span"))
 
+# add google news and trends urls to topic list ------------------------------
 Etalase_news_topiclist_tbl_trim <- rbind(Etalase_news_topiclist_tbl_trim, 
                                                 worksheet4_L6_googletrends)
 
@@ -80,6 +83,7 @@ Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
                                    lowertopics,
                                    googletrends_urlsnippet_end))
 
+# get image urls from google news urls -------------------------------------------
 mydata <- lapply(Etalase_news_topiclist_tbl_trim$competitor_googlenews_url, function(x) {
   url1 <- read_html(x)
   googlenews_img_extract <- xml_text(xml_find_all(url1, '//img/@src'))[1]
@@ -92,6 +96,7 @@ colnames(mydata_extracted)<- c("extracted_images")
 Etalase_news_topiclist_tbl_trim_extracted <- cbind(Etalase_news_topiclist_tbl_trim,
                                                    mydata_extracted)
 
+# add regex to extract topics from url --------------------------------------
 Etalase_news_topiclist_tbl_imagecheck <-  Etalase_news_topiclist_tbl_trim_extracted %>% 
   mutate(imagecheck = case_when(!is.na(extracted_images) ~ as.character(extracted_images),
                                 is.na(extracted_images) ~ "https://scontent.fcgk12-1.fna.fbcdn.net/v/t1.0-9/27750288_10155438543847712_8698226800673513911_n.jpg?_nc_eui2=v1%3AAeEnhO1cv42QrSzREQ_thhuQebjgnuOmDGp-K0sq90qrewZ94AbQQYJ-LJPI5vWCDzM1MMb6GlA0OtUT-Vug9ajj-XwDDCyNHAciM8vGnffZhQ&oh=6b1ac1025f915065af80fac0c8fe0681&oe=5B4A8D96")) %>%
@@ -101,7 +106,7 @@ Etalase_news_topiclist_tbl_imagecheck <-  Etalase_news_topiclist_tbl_trim_extrac
 Etalase_news_topiclist_tbl_imagecheck$topics_regex = gsub(' ', '|^', Etalase_news_topiclist_tbl_imagecheck$topics_regex)
 
 
-
+# classify topics against list of keywords ------------------------------------
 cat_classification_table <- lapply(worksheet2_L6_googletrends[1:5], function(y) {
   lapply(Etalase_news_topiclist_tbl_imagecheck$topics_regex, function(x) {
   ifelse(grep(x, y, ignore.case = TRUE,
@@ -133,11 +138,12 @@ cat_table <- cat_table %>%
 Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_imagecheck,
                                                 cat_table)
 
+# add logic for conditional image displays via URL of each image --------------
 Etalase_news_topiclist_tbl_statuscheck <- Etalase_news_topiclist_tbl_statuscheck %>%
   mutate(image_display = case_when(imagecheck == 'https://lh3.googleusercontent.com/JDFOyo903E9WGstK0YhI2ZFOKR3h4qDxBngX5M8XJVBZFKzOBoxLmk3OVlgNw9SOE-HfkNgb=w48' ~ 'https://www.airportrampequipment.com/8903167/assets/images/product/image-250x250.gif',
                                    TRUE ~ imagecheck))
 
-# regex for info-2
+# regex for info-2 - scrape data from tag url to find article titles ----------------------------
 readUrl <- function(url) {
   tryCatch(
   xml_text(xml_find_all(read_html(url), '//*[@id="main"]/div/div/div[1]/div/p/text()'))[1]
@@ -156,9 +162,7 @@ Etalase_news_topiclist_tbl_statuscheck <- cbind(Etalase_news_topiclist_tbl_statu
                                                 mydata_extracted_info2)
 
 
-# create table for popular topic rankings (desktop/mobile)
-# ***** 15 June: check if need to scrape from original source or reference spreadsheets*****
-
+# create table for popular topic rankings (desktop/mobile) -------------------
 url_detik_berita <- read_html("http://news.detik.com/berita")
 detik_berita_extract <- unlist(xml_text(xml_find_all(url_detik_berita, "//span[@class='normal']")))
 detik_berita_extract <- as.data.frame(detik_berita_extract)
@@ -168,7 +172,7 @@ detik_berita_fulltable <- cbind(as.data.frame(detik_berita_extract[1:3,])
 
 colnames(detik_berita_fulltable)[1:2] <- c("title", "link")
 
-# create table for line popular topic rankings
+# create table for popular topic rankings (line) -----------------------------
 line_url_detik_berita <- read_html("http://today.line.me/ID/pc/main/100271")
 line_detik_berita_extract <- unlist(xml_text(xml_find_all(line_url_detik_berita, "//a/@href [contains(., 'article')]")))
 line_detik_berita_extract <- as.data.frame(line_detik_berita_extract)
@@ -180,18 +184,21 @@ line_detik_berita_extract_table <- line_detik_berita_extract %>%
   select(title = "clean3", link = "line_detik_berita_extract") %>% 
   filter(row_number()<= 2)
 
+# create combined table for topic rankings -----------------------------------
 popular_topics_fulltable <- rbind(detik_berita_fulltable, 
                                   line_detik_berita_extract_table)
 
-# upload to Bigquery
+
+# upload to Bigquery ---------------------------------------------------------
 # Variables for the BigQuery upload portion
 destinationProject <- "analisis-production"
 destinationDataset <- "sparkline"
 contentreportName <- 'keywords_dashboard_content'
 rankingsreportName <- 'popular_topics_fulltable'
+lastupdatedreportName <- 'last_updated_timings'
 
 
-# Check if the table exists, if table exists, then delete the table
+# Check if the table exists, if table exists, then delete the table ----------
 tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, contentreportName)),
          error = function(e){
            print(paste0(contentreportName, " not available for deletion"))
@@ -202,7 +209,7 @@ tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, rankin
            print(paste0(rankingsreportName, " not available for deletion"))
          })
 
-# Upload the table into big query
+# Upload the table into big query --------------------------------------------
 tryCatch(insert_upload_job(destinationProject, destinationDataset, contentreportName, Etalase_news_topiclist_tbl_statuscheck),
          error = function(e){
            print(paste0(contentreportName, " failed to upload"))
@@ -213,3 +220,45 @@ tryCatch(insert_upload_job(destinationProject, destinationDataset, rankingsrepor
            print(paste0(rankingsreportName, " failed to upload"))
          })
 
+
+# get last updated date and time in a dataframe and upload as a table into bigquery ------
+ms_to_date = function(ms, t0="1970-01-01", timezone) {
+  ## @ms: a numeric vector of milliseconds (big integers of 13 digits)
+  ## @t0: a string of the format "yyyy-mm-dd", specifying the date that
+  ##      corresponds to 0 millisecond
+  ## @timezone: a string specifying a timezone that can be recognized by R
+  ## return: a POSIXct vector representing calendar dates and times        
+  sec = ms / 1000
+  as.POSIXct(sec, origin=t0, tz=timezone)
+}
+
+updated_times <-  data.frame(table_name=c(contentreportName, rankingsreportName), 
+                             last_updated_timestamp = 
+                               c(ms_to_date(as.numeric(bq_table_meta(bq_table(destinationProject, 
+                                                                                               destinationDataset, 
+                                                                                               contentreportName))[["lastModifiedTime"]]), 
+                                                             timezone="Asia/Singapore"), 
+                                                  ms_to_date(as.numeric(bq_table_meta(bq_table(destinationProject, 
+                                                                                                     destinationDataset, 
+                                                                                                     rankingsreportName))[["lastModifiedTime"]]), 
+                                                                   timezone="Asia/Singapore")))
+
+updated_times <- updated_times %>% 
+  mutate(last_updated_datetime = format.Date(last_updated_timestamp,
+                                         "%d/%m/%Y %r")) %>% 
+  mutate(last_updated_date = format.Date(last_updated_timestamp,
+                                         "%d/%m/%Y"),
+         last_updated_time = format.Date(last_updated_timestamp,
+                                         "%r"))
+
+# upload last updated timings into Bigquery table ---------------------------------
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, lastupdatedreportName)),
+         error = function(e){
+           print(paste0(rankingsreportName, " not available for deletion"))
+         })
+
+# Upload the table into big query
+tryCatch(insert_upload_job(destinationProject, destinationDataset, lastupdatedreportName, updated_times),
+         error = function(e){
+           print(paste0(contentreportName, " failed to upload"))
+         })
