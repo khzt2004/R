@@ -8,9 +8,14 @@ library(rvest)
 library(RCurl)
 library(XML)
 library(xml2)
+library(googleAnalyticsR)
 
 # get data from Googlesheets - what if owner of google sheet is different ------
 my_sheets <- gs_ls()
+
+# authenticate google analytics access
+ga_auth()
+account_list <- ga_account_list()
 
 Etalase_news <- gs_key("1dD18QMp3_VCVpFwKYeoG87RAM6_qlAEWM41NKVJgbrA")
 L6_googletrends <- gs_key("1IkPRSwzq-QfDEwvIqBWhsxy3ye2eY5k7Rv8qn6wt01I")
@@ -22,6 +27,8 @@ googletrends_urlsnippet_start <- "https://trends.google.com/trends/explore?q="
 googletrends_urlsnippet_end <- "&geo=ID&date=now%201-d#RELATED_QUERIES"
 googlenews_url_wksheet4 <- "https://news.google.com/news/?ned=id_id&gl=ID&hl=id"
 trends_monitoring_dash <- gs_key("1mV1X6xt9vf1L7VEsWafkVuWh1sXfDMp9dYNWXpL5HtQ")
+
+view_id <- account_list$viewId[account_list$viewName=='1. All Liputan6 Site Data']
 
 # get list of topics from trends monitoring dashboard ----------------------
 Etalase_news_topiclist <- trends_monitoring_dash %>% 
@@ -187,6 +194,38 @@ line_detik_berita_extract_table <- line_detik_berita_extract %>%
 # create combined table for topic rankings -----------------------------------
 popular_topics_fulltable <- rbind(detik_berita_fulltable, 
                                   line_detik_berita_extract_table)
+
+
+# get tags and organic traffic data from google analytics --------------------
+startDate <- Sys.Date()
+endDate <- Sys.Date()
+
+segment_for_allusers <- "gaid::-1"
+seg_allUsers <- segment_ga4("All Users", segment_id = segment_for_allusers)
+
+df_organic <- dim_filter(dimension="channelGrouping",operator="REGEXP",expressions="Organic")
+filter_organic <- filter_clause_ga4(list(df_organic))
+
+
+ga_data_organic_keywords <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions"), 
+                   dimensions = c("dimension16", "channelGrouping"),
+                   dim_filters = filter_organic,
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+# get the sum of sessions for each organic keyword
+Etalase_news_topiclist_tbl_statuscheck$topics
+
+keyword_sumsessions <- lapply(Etalase_news_topiclist_tbl_statuscheck$topics, function(x) {
+  keyword1 <- ga_data_organic_keywords %>% 
+    filter(grepl(x, dimension16, ignore.case = TRUE))
+  sessionsum <- sum(keyword1$sessions)
+  return(sessionsum)
+})
 
 
 # upload to Bigquery ---------------------------------------------------------
