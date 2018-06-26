@@ -200,6 +200,8 @@ campaign_commercial_perf_pivot_query <- paste0("SELECT *
                            SELECT
                            #  FORMAT_DATE('%b', CAST(date AS date)) AS month_sevendays,
                            CAST(date AS date) AS date_sevendays,
+                           Brand as Brand_B, Cat_Level_1 as Cat_Level_1_B,	
+                           Cat_Level_2 as Cat_Level_2_B,	Cat_Level_3 as Cat_Level_3_B,
                            SUM(NMV_USD) AS NMV_sevendays,
                            SUM(Item) AS Item_sevendays,
                            SUM(PV) AS PV_sevendays,
@@ -213,13 +215,17 @@ campaign_commercial_perf_pivot_query <- paste0("SELECT *
                            _table_suffix BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2018-12-31'))
                            GROUP BY
-                           1) AS B
+                           1,2,3,4,5) AS B
                            ON
-                           A.seven_days_ago = B.date_sevendays
+                           A.seven_days_ago = B.date_sevendays and 
+A.Brand = B.Brand_B and A.Cat_Level_1 = B.Cat_Level_1_B and A.Cat_Level_2 = B.Cat_Level_2_B
+and A.Cat_Level_3 = B.Cat_Level_3_B
                            LEFT JOIN (
                            SELECT
                            #  FORMAT_DATE('%b', CAST(date AS date)) AS month_previousmonth,
                            CAST(date AS date) AS date_previousmonth,
+Brand as Brand_C, Cat_Level_1 as Cat_Level_1_C, 
+Cat_Level_2 as Cat_Level_2_C,	Cat_Level_3 as Cat_Level_3_C,
                            SUM(NMV_USD) AS NMV_previousmonth,
                            SUM(Item) AS Item_previousmonth,
                            SUM(PV) AS PV_previousmonth,
@@ -233,13 +239,15 @@ campaign_commercial_perf_pivot_query <- paste0("SELECT *
                            _table_suffix BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-01-01'))
                            AND FORMAT_DATE('%Y%m%d', DATE('2018-12-31'))
                            GROUP BY
-                           1) AS C
+                           1,2,3,4,5) AS C
                            ON
-                           A.previous_month = C.date_previousmonth")
+                           A.previous_month = C.date_previousmonth and 
+A.Brand = C.Brand_C and A.Cat_Level_1 = C.Cat_Level_1_C and A.Cat_Level_2 = C.Cat_Level_2_C
+and A.Cat_Level_3 = C.Cat_Level_3_C")
 
 campaign_commercial_perf_pivot_data <- bq_table_download(bq_project_query(project, campaign_commercial_perf_pivot_query))
 campaign_commercial_perf_pivot_table <- campaign_commercial_perf_pivot_data %>%
-  select(1:7, 13, 19, 8:12, 14:18, 20:24) %>%
+  select(1:7, 13, 23, 8:12, 18:22, 28:32) %>%
   gather(metric, value, 10:24) %>%
   separate(metric, c("metric", "period"), "_") %>%
   spread(period, value) %>%
@@ -289,10 +297,6 @@ combined_Target_Ach_master <- shopee_lazada_master %>%
          Month_Week = paste0(Month, " - Week ", Week))
 
 
-# campaign commercial performance dashboard
-# UL_campaign commercial performance
-# BQ: select * from table
-
 # Variables for the BigQuery upload portion
 destinationProject <- 'unified-welder-172709'
 destinationDataset <- 'TH_Marketing_Performance_Dashboard_Targets'
@@ -331,7 +335,6 @@ tryCatch(insert_upload_job(destinationProject, destinationDataset, ASP_CR_report
            print(paste0(reportName, " failed to upload"))
          })
 
-# bq_table_upload(bq_table(project, targets_dataset, "brandpivot_joinedtable"), brandpivot_campaigncommercial_data)
 
 tryCatch(insert_upload_job(destinationProject, destinationDataset, Campaign_commercial_reportName, campaign_commercial_perf_pivot_table),
          error = function(e){
