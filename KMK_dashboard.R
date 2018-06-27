@@ -10,6 +10,7 @@ library(XML)
 library(xml2)
 library(googleAnalyticsR)
 
+
 # get data from Googlesheets - what if owner of google sheet is different ------
 my_sheets <- gs_ls()
 
@@ -197,7 +198,7 @@ popular_topics_fulltable <- rbind(detik_berita_fulltable,
 
 
 # get tags and organic traffic data from google analytics --------------------
-startDate <- Sys.Date()
+startDate <- Sys.Date() -7
 endDate <- Sys.Date()
 
 segment_for_allusers <- "gaid::-1"
@@ -211,21 +212,42 @@ ga_data_organic_keywords <-
   google_analytics(view_id, #=This is a (dynamic) ViewID parameter
                    date_range = c(startDate, endDate), 
                    metrics = c("sessions"), 
-                   dimensions = c("dimension16", "channelGrouping"),
+                   dimensions = c("date", "dimension16", "channelGrouping"),
                    dim_filters = filter_organic,
                    segments = c(seg_allUsers),
                    anti_sample = TRUE,
                    max = -1)
 
 # get the sum of sessions for each organic keyword
-Etalase_news_topiclist_tbl_statuscheck$topics
 
 keyword_sumsessions <- lapply(Etalase_news_topiclist_tbl_statuscheck$topics, function(x) {
   keyword1 <- ga_data_organic_keywords %>% 
-    filter(grepl(x, dimension16, ignore.case = TRUE))
-  sessionsum <- sum(keyword1$sessions)
-  return(sessionsum)
+    filter(grepl(x, dimension16, ignore.case = TRUE)) %>% 
+    group_by(date) %>% 
+    summarise(sessions = sum(sessions)) %>% 
+    mutate(keyword = x)
 })
+
+keyword_sumsessions <- bind_rows(keyword_sumsessions)
+keyword_sumsessions <- keyword_sumsessions %>% 
+  filter(grepl("[a-zA-Z0-9]", keyword, ignore.case = TRUE)) %>% 
+  spread(date, sessions) %>% 
+  rename_at(.vars = vars(contains("-")),
+            .funs = funs(gsub("-", "_", .))) %>% 
+  rename_at(vars(-keyword),function(x) paste0("_", x))
+
+# sample query for keywords
+
+#SELECT date, 
+#(SELECT MAX(IF(index=16, value, NULL)) FROM UNNEST(hits.customDimensions)) AS dimension16,
+#SUM(totals.visits) AS Sessions
+#FROM `analisis-production.89547806.ga_sessions_20*`, UNNEST(hits) as hits
+#where parse_date('%y%m%d', _table_suffix) BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY) AND
+#CURRENT_DATE()
+#and channelGrouping = 'Organic Search'
+#group by 1,2
+#having regexp_contains(dimension16, 'Ikan Arapaima')
+#order by 1
 
 
 # upload to Bigquery ---------------------------------------------------------
@@ -235,6 +257,7 @@ destinationDataset <- "sparkline"
 contentreportName <- 'keywords_dashboard_content'
 rankingsreportName <- 'popular_topics_fulltable'
 lastupdatedreportName <- 'last_updated_timings'
+organictrafficreportName <- 'keyword_organic_traffic'
 
 
 # Check if the table exists, if table exists, then delete the table ----------
@@ -244,6 +267,11 @@ tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, conten
          })
 
 tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, rankingsreportName)),
+         error = function(e){
+           print(paste0(rankingsreportName, " not available for deletion"))
+         })
+
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, organictrafficreportName)),
          error = function(e){
            print(paste0(rankingsreportName, " not available for deletion"))
          })
@@ -259,6 +287,11 @@ tryCatch(insert_upload_job(destinationProject, destinationDataset, rankingsrepor
            print(paste0(rankingsreportName, " failed to upload"))
          })
 
+tryCatch(insert_upload_job(destinationProject, destinationDataset, organictrafficreportName, keyword_sumsessions),
+         error = function(e){
+           print(paste0(rankingsreportName, " failed to upload"))
+         })
+
 
 # get last updated date and time in a dataframe and upload as a table into bigquery ------
 ms_to_date = function(ms, t0="1970-01-01", timezone) {
@@ -270,6 +303,8 @@ ms_to_date = function(ms, t0="1970-01-01", timezone) {
   sec = ms / 1000
   as.POSIXct(sec, origin=t0, tz=timezone)
 }
+
+Sys.sleep(10)
 
 updated_times <-  data.frame(table_name=c(contentreportName, rankingsreportName), 
                              last_updated_timestamp = 
