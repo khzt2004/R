@@ -16,7 +16,7 @@ get_target_query <- paste0("SELECT
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
-                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31')) AND Upload_Date > '2018-06-01'
                            GROUP BY 1,2,3,4,5,6,7,8)
                            UNION ALL
                            (SELECT
@@ -25,7 +25,7 @@ get_target_query <- paste0("SELECT
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
-                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31')) AND Upload_Date > '2018-06-01'
                            GROUP BY 1,2,3,4,5,6,7,8)
                            UNION ALL
                            (SELECT
@@ -35,7 +35,7 @@ get_target_query <- paste0("SELECT
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
-                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31')) AND Upload_Date > '2018-06-01'
                            GROUP BY 1,2,3,4,5,6,7,8)
                            UNION ALL
                            (SELECT
@@ -44,7 +44,7 @@ get_target_query <- paste0("SELECT
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
-                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31')) AND Upload_Date > '2018-06-01'
                            GROUP BY 1,2,3,4,5,6,7,8)
                            UNION ALL
                            (SELECT
@@ -53,7 +53,7 @@ get_target_query <- paste0("SELECT
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
-                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31')) AND Upload_Date > '2018-06-01'
                            GROUP BY 1,2,3,4,5,6,7,8,9 )
                            UNION ALL
                            (SELECT
@@ -62,7 +62,7 @@ get_target_query <- paste0("SELECT
                            FROM
                            `unified-welder-172709.TH_Marketing_Performance_Dashboard_Targets.Monthly_Targets_*`
                            WHERE  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2016-01-01'))
-                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
+                           AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31')) AND Upload_Date > '2018-06-01'
                            GROUP BY 1,2,3,4,5,6,7,8)
                            ")
 
