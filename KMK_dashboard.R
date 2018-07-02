@@ -83,12 +83,13 @@ Etalase_news_topiclist_tbl_trim <- rbind(Etalase_news_topiclist_tbl_trim,
 Etalase_news_topiclist_tbl_trim$lowertopics <- tolower(Etalase_news_topiclist_tbl_trim$topics)
 Etalase_news_topiclist_tbl_trim <- Etalase_news_topiclist_tbl_trim %>%
   mutate(lowertopics = str_replace_all(lowertopics, ' ', '-')) %>%
+  mutate(slashtopics = str_replace_all(lowertopics, '-', '%20')) %>%
   mutate(tag_url = paste0(liputan6_tag, lowertopics)) %>%
   mutate(competitor_googlenews_url = paste0(googlenews_urlsnippet_start,
                                  lowertopics,
                                  googlenews_urlsnippet_end),
          googletrends_url = paste0(googletrends_urlsnippet_start,
-                                   lowertopics,
+                                   slashtopics,
                                    googletrends_urlsnippet_end))
 
 # get image urls from google news urls -------------------------------------------
@@ -231,6 +232,8 @@ keyword_sumsessions <- lapply(Etalase_news_topiclist_tbl_statuscheck$topics, fun
 keyword_sumsessions <- bind_rows(keyword_sumsessions)
 keyword_sumsessions <- keyword_sumsessions %>% 
   filter(grepl("[a-zA-Z0-9]", keyword, ignore.case = TRUE)) %>% 
+  group_by(date, keyword) %>% 
+  summarise(sessions = sum(sessions)) %>% 
   spread(date, sessions) %>% 
   rename_at(.vars = vars(contains("-")),
             .funs = funs(gsub("-", "_", .))) %>% 
