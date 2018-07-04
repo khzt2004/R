@@ -252,6 +252,92 @@ keyword_sumsessions <- keyword_sumsessions %>%
 #having regexp_contains(dimension16, 'Ikan Arapaima')
 #order by 1
 
+# Create table for last updated timings --------------------------------------
+readArticleLink <- function(hyperlink) {
+  tryCatch(
+    read_html(hyperlink) %>% 
+      html_node(".articles--iridescent-list--text-item__title-link") %>% 
+      html_attr("href")
+  )
+}
+  
+Etalase_news_topiclist_tbl_timings <-  Etalase_news_topiclist_tbl_statuscheck %>% 
+  select(topics, tag_url, info_2)
+
+Etalase_news_topiclist_tbl_timings_filtered <- Etalase_news_topiclist_tbl_timings %>% 
+  filter(!is.na(info_2))
+
+link_timing_info2 <- lapply(Etalase_news_topiclist_tbl_timings_filtered$tag_url, readArticleLink)
+link_timing_extracted_info2 <- as.data.frame(unlist(link_timing_info2))
+link_timing_extracted_info2 <- link_timing_extracted_info2 %>% 
+  select(firstArticleLink = `unlist(link_timing_info2)`) %>% 
+  mutate(firstArticleLink = as.character(firstArticleLink))
+
+Etalase_news_topiclist_tbl_timings_filtered <- cbind(Etalase_news_topiclist_tbl_timings_filtered,
+                                                link_timing_extracted_info2)
+
+Etalase_news_topiclist_tbl_timings_articleLink <- Etalase_news_topiclist_tbl_timings %>% 
+  left_join(Etalase_news_topiclist_tbl_timings_filtered,
+            by = c("topics", "tag_url", "info_2"))
+
+getArticleTiming <- function(article_url) {
+  tryCatch(
+    read_html(article_url) %>% 
+      html_node(".read-page--header--author__datetime") %>% 
+      html_text(), 
+    error = function(e){NA}
+  )
+}
+
+article_timing_info2 <- lapply(Etalase_news_topiclist_tbl_timings_articleLink$firstArticleLink, getArticleTiming)
+article_timing_info2 <- as.data.frame(unlist(article_timing_info2))
+article_timing_info2 <- article_timing_info2 %>% 
+  select(firstArticleTiming = `unlist(article_timing_info2)`) %>% 
+  mutate(firstArticleTiming = as.character(firstArticleTiming))
+
+Etalase_news_topiclist_tbl_articleTimings <- cbind(Etalase_news_topiclist_tbl_timings_articleLink,
+                                                     article_timing_info2)
+
+Etalase_news_topiclist_tbl_articleTimings <- Etalase_news_topiclist_tbl_articleTimings %>% 
+  separate(firstArticleTiming, 
+           c("ArticleDate", "ArticleTime"), 
+           ",", extra = "merge") %>% 
+  select(-tag_url, -info_2)
+
+# process urls from articletimings table for use with Google Analytics tag request-----
+trimArticleLink <- Etalase_news_topiclist_tbl_articleTimings %>% 
+  select(firstArticleLink) %>% 
+  filter(!is.na(firstArticleLink)) %>% 
+  mutate(firstArticleLink = gsub('https://www.liputan6.com|http://www.liputan6.com', 
+                                 '', 
+                                 firstArticleLink))
+
+trimArticleLink_regex <- paste(unlist(trimArticleLink), collapse = '|')
+
+
+# get tags from custom dimenions in Google Analytics and append to dataframe -----
+df_page <- dim_filter(dimension="pagePath",
+                      operator="REGEXP",
+                      expressions=trimArticleLink_regex)
+filter_page <- filter_clause_ga4(list(df_page))
+
+
+ga_data_keyword_tag <- 
+  google_analytics(view_id, #=This is a (dynamic) ViewID parameter
+                   date_range = c(startDate, endDate), 
+                   metrics = c("sessions"), 
+                   dimensions = c("pagePath", "dimension16"),
+                   dim_filters = filter_page,
+                   segments = c(seg_allUsers),
+                   anti_sample = TRUE,
+                   max = -1)
+
+ga_data_keyword_tag <- ga_data_keyword_tag %>% 
+  mutate(pagePath = paste0("https://www.liputan6.com", pagePath)) %>% 
+  select(-segment, -sessions)
+
+Etalase_news_topiclist_tbl_articleTimingsTags <- Etalase_news_topiclist_tbl_articleTimings %>% 
+  left_join(ga_data_keyword_tag, by = c("firstArticleLink" = "pagePath"))
 
 # upload to Bigquery ---------------------------------------------------------
 # Variables for the BigQuery upload portion
@@ -259,8 +345,9 @@ destinationProject <- "analisis-production"
 destinationDataset <- "sparkline"
 contentreportName <- 'keywords_dashboard_content'
 rankingsreportName <- 'popular_topics_fulltable'
-lastupdatedreportName <- 'last_updated_timings'
+articleupdatedreportName <- 'article_updated_timings'
 organictrafficreportName <- 'keyword_organic_traffic'
+lastupdatedreportName <- 'last_updated_timings'
 
 
 # Check if the table exists, if table exists, then delete the table ----------
@@ -276,7 +363,12 @@ tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, rankin
 
 tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, organictrafficreportName)),
          error = function(e){
-           print(paste0(rankingsreportName, " not available for deletion"))
+           print(paste0(organictrafficreportName, " not available for deletion"))
+         })
+
+tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, articleupdatedreportName)),
+         error = function(e){
+           print(paste0(articleupdatedreportName, " not available for deletion"))
          })
 
 # Upload the table into big query --------------------------------------------
@@ -292,12 +384,17 @@ tryCatch(insert_upload_job(destinationProject, destinationDataset, rankingsrepor
 
 tryCatch(insert_upload_job(destinationProject, destinationDataset, organictrafficreportName, keyword_sumsessions),
          error = function(e){
-           print(paste0(rankingsreportName, " failed to upload"))
+           print(paste0(organictrafficreportName, " failed to upload"))
+         })
+
+tryCatch(insert_upload_job(destinationProject, destinationDataset, articleupdatedreportName, Etalase_news_topiclist_tbl_articleTimingsTags),
+         error = function(e){
+           print(paste0(articleupdatedreportName, " failed to upload"))
          })
 
 
 # get last updated date and time in a dataframe and upload as a table into bigquery ------
-ms_to_date = function(ms, t0="1970-01-01", timezone) {
+ ms_to_date = function(ms, t0="1970-01-01", timezone) {
   ## @ms: a numeric vector of milliseconds (big integers of 13 digits)
   ## @t0: a string of the format "yyyy-mm-dd", specifying the date that
   ##      corresponds to 0 millisecond
@@ -305,11 +402,15 @@ ms_to_date = function(ms, t0="1970-01-01", timezone) {
   ## return: a POSIXct vector representing calendar dates and times        
   sec = ms / 1000
   as.POSIXct(sec, origin=t0, tz=timezone)
-}
+ }
 
-Sys.sleep(10)
+ Sys.sleep(10)
 
-updated_times <-  data.frame(table_name=c(contentreportName, rankingsreportName), 
+ 
+ updated_times <-  data.frame(table_name=c(contentreportName, 
+                                           rankingsreportName,
+                                           articleupdatedreportName,
+                                           organictrafficreportName), 
                              last_updated_timestamp = 
                                c(ms_to_date(as.numeric(bq_table_meta(bq_table(destinationProject, 
                                                                                                destinationDataset, 
@@ -318,8 +419,18 @@ updated_times <-  data.frame(table_name=c(contentreportName, rankingsreportName)
                                                   ms_to_date(as.numeric(bq_table_meta(bq_table(destinationProject, 
                                                                                                      destinationDataset, 
                                                                                                      rankingsreportName))[["lastModifiedTime"]]), 
-                                                                   timezone="Asia/Singapore")))
+                                                                   timezone="Asia/Singapore"),
+                                 ms_to_date(as.numeric(bq_table_meta(bq_table(destinationProject, 
+                                                                              destinationDataset, 
+                                                                              articleupdatedreportName))[["lastModifiedTime"]]), 
+                                            timezone="Asia/Singapore"),
+                                 ms_to_date(as.numeric(bq_table_meta(bq_table(destinationProject, 
+                                                                              destinationDataset, 
+                                                                              organictrafficreportName))[["lastModifiedTime"]]), 
+                                            timezone="Asia/Singapore")))
 
+
+ 
 updated_times <- updated_times %>% 
   mutate(last_updated_datetime = format.Date(last_updated_timestamp,
                                          "%d/%m/%Y %r")) %>% 
@@ -328,14 +439,13 @@ updated_times <- updated_times %>%
          last_updated_time = format.Date(last_updated_timestamp,
                                          "%r"))
 
-# upload last updated timings into Bigquery table ---------------------------------
 tryCatch(bq_table_delete(bq_table(destinationProject, destinationDataset, lastupdatedreportName)),
          error = function(e){
-           print(paste0(rankingsreportName, " not available for deletion"))
+           print(paste0(lastupdatedreportName, " not available for deletion"))
          })
 
-# Upload the table into big query
 tryCatch(insert_upload_job(destinationProject, destinationDataset, lastupdatedreportName, updated_times),
          error = function(e){
-           print(paste0(contentreportName, " failed to upload"))
+           print(paste0(lastupdatedreportName, " failed to upload"))
          })
+
