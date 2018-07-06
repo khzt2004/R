@@ -123,7 +123,9 @@ get_actuals_query <-
     AND FORMAT_DATE('%Y%m%d', DATE('2019-12-31'))
     group by 2,3,4,5,6,7,8,9,10,11, 12,13,14,15,
     16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,
-    31,32,33,34,35,36,37,38,39,40,41,42,43,44,45)
+    31,32,33,34,35,36,37,38,39,40,41,42,43,44,45),
+    forex_table as (select * from `unified-welder-172709.Lookup_Tables.Forex_Rates` where From_Currency = 'THB'
+    and To_Currency = 'USD')
     select
     Date_of_Week,
     EXTRACT(Year from Date_of_Week) as Year,
@@ -162,7 +164,7 @@ get_actuals_query <-
     Retail_MP as Partnership,
     cast(File_Date as DATE) AS Date_of_Week,
     sum(Net_Items) as Items,
-    SUM(NMV) AS NMV,
+    SUM(NMV) * (select 1/rate from forex_table) as NMV,
     sum(PV_App) + sum(PV_Web) as PV,
     sum(New_Cust) as NC
     FROM SKU_Detail_table
@@ -181,7 +183,7 @@ get_actuals_query <-
     # need retail/MP partnership
     cast(File_Date as DATE) AS Date_of_Week,
     sum(cast(Total_Quantity_Sold as FLOAT64)) as Items,
-    SUM(Completed_Sales_This_Week_EUR) AS NMV,
+    SUM(Completed_Sales_This_Week_Local_Currency) AS NMV,
     sum(Total_Product_Views) as PV,
     cast('0' as INT64) as NC
     FROM Shopee_Pdt_Perf_Table
@@ -214,12 +216,12 @@ campaign_comm_perf_pivotquery <- paste0(
   Cat_Level_3,
   DATE_SUB(CAST(date AS date), INTERVAL 7 DAY) AS seven_days_ago,
   DATE_SUB(CAST(date AS date), INTERVAL 1 MONTH) AS previous_month,
-  SUM(NMV_USD) AS NMV_current,
+  SUM(NMV_Local_Currency) AS NMV_current,
   SUM(Item) AS Item_current,
   SUM(PV) AS PV_current,
   safe_divide(SUM(Item),
   SUM(PV)) AS CR_current,
-  safe_divide(SUM(NMV_USD),
+  safe_divide(SUM(NMV_Local_Currency),
   SUM(Item)) AS ASP_current
   FROM
   `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
@@ -236,12 +238,12 @@ campaign_comm_perf_pivotquery <- paste0(
   CAST(date AS date) AS date_sevendays,
   Brand as Brand_B, Cat_Level_1 as Cat_Level_1_B,
   Cat_Level_2 as Cat_Level_2_B,	Cat_Level_3 as Cat_Level_3_B,
-  SUM(NMV_USD) AS NMV_sevendays,
+  SUM(NMV_Local_Currency) AS NMV_sevendays,
   SUM(Item) AS Item_sevendays,
   SUM(PV) AS PV_sevendays,
   safe_divide(SUM(Item),
   SUM(PV)) AS CR_sevendays,
-  safe_divide(SUM(NMV_USD),
+  safe_divide(SUM(NMV_Local_Currency),
   SUM(Item)) AS ASP_sevendays
   FROM
   `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
@@ -260,12 +262,12 @@ campaign_comm_perf_pivotquery <- paste0(
   CAST(date AS date) AS date_previousmonth,
   Brand as Brand_C, Cat_Level_1 as Cat_Level_1_C,
   Cat_Level_2 as Cat_Level_2_C,	Cat_Level_3 as Cat_Level_3_C,
-  SUM(NMV_USD) AS NMV_previousmonth,
+  SUM(NMV_Local_Currency) AS NMV_previousmonth,
   SUM(Item) AS Item_previousmonth,
   SUM(PV) AS PV_previousmonth,
   safe_divide(SUM(Item),
   SUM(PV)) AS CR_previousmonth,
-  safe_divide(SUM(NMV_USD),
+  safe_divide(SUM(NMV_Local_Currency),
   SUM(Item)) AS ASP_previousmonth
   FROM
   `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
@@ -281,6 +283,7 @@ campaign_comm_perf_pivotquery <- paste0(
   and A.Cat_Level_3 = C.Cat_Level_3_C"
 )
 
+# unpivot metrics from campaign commercial performance dataset ------------------------
 campaigncommercialperf_bqdata <-
   bq_table_download(bq_project_query(project, campaign_comm_perf_pivotquery))
 campaign_commercial_perf_table <- campaigncommercialperf_bqdata %>%
@@ -290,12 +293,13 @@ campaign_commercial_perf_table <- campaigncommercialperf_bqdata %>%
   spread(period, value) %>%
   select(1:10, present = "current", 12:13)
 
+# get target data only for the latest upload dates ------------------------------------
 target_data <- target_data %>%
   mutate(Upload_Date = as.Date(Upload_Date, "%d/%m/%Y")) %>%
   filter(Upload_Date == max(Upload_Date)) %>%
   select(-Upload_Date)
 
-# master table of targets and actual performance ----------------------------------------
+# create master table of targets and actual performance ----------------------------------------
 target_data_ASP_CR <- target_data %>%
   filter(Metric == "NMV" | Metric == "Item" | Metric == "PV") %>%
   spread("Metric", "Target") %>%
@@ -307,6 +311,7 @@ target_data_ASP_CR <- target_data %>%
     PV_Target = "PV"
   )
 
+# create separate master table for ASP and CR --------------------------------------------------
 asp_cr_combined_master <- actuals_data %>%
   left_join(
     target_data_ASP_CR,
@@ -341,11 +346,11 @@ asp_cr_combined_master <- actuals_data %>%
   ) %>%
   mutate(Month_Week = paste0(Month, " - Week ", Week))
 
+# unpivot data from actual results table --------------------------------------------
 shopee_lazada_master <- actuals_data %>%
   gather("Metric", "Achieved", 11:16)
 
-# check this join query after target table uploaded-------------------------------------------
-# for use in Summary_Targets_Table
+# create master table for use in Summary_Targets_Table: check this join query after target table uploaded-------------------------------------------
 combined_Target_Ach_master <- shopee_lazada_master %>%
   left_join(
     target_data,
@@ -382,14 +387,14 @@ combined_Target_Ach_master <- shopee_lazada_master %>%
   )
 
 
-# Variables for the BigQuery upload portion
+# Variables for the BigQuery upload portion ----------------------------------------------
 destinationproject <- "unified-welder-172709"
 destinationdataset <- "TH_Marketing_Performance_Dashboard_Targets"
 reportname <- "BQ_Target_Actuals"
 asp_cr_reportname <- "asp_cr_combined_master_table"
 campaign_commercial_reportname <- "campaign_commercial_perf_table"
 
-# Check if the table exists, if table exists, then delete the table
+# Check if the table exists, if table exists, then delete the table ------------------------
 tryCatch(
   bq_table_delete(bq_table(
     destinationproject, destinationdataset, reportname
@@ -420,7 +425,7 @@ tryCatch(
 
 
 
-# Upload the table into big query
+# Upload the table into big query -----------------------------
 tryCatch(
   insert_upload_job(
     destinationproject,
