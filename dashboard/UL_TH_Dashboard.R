@@ -206,7 +206,9 @@ actuals_data <-
 
 # get data for use in campaign commercial performance dashboard -------------------------
 campaign_comm_perf_pivotquery <- paste0(
-  "SELECT *
+  "SELECT case when date is null and date_sevendays is not null then DATE_ADD(CAST(date_sevendays AS date), INTERVAL 7 DAY)
+  when date is null and date_sevendays is null then DATE_ADD(CAST(date_previousmonth AS date), INTERVAL 1 MONTH)
+  else CAST(date AS date) end as new_date, *
   FROM (
   SELECT
   CAST(date AS date) AS date,
@@ -232,7 +234,7 @@ campaign_comm_perf_pivotquery <- paste0(
   1,
   2,
   3,4,5,6,7) AS A
-  LEFT JOIN (
+  FULL JOIN (
   SELECT
   #  FORMAT_DATE('%b', CAST(date AS date)) AS month_sevendays,
   CAST(date AS date) AS date_sevendays,
@@ -256,7 +258,7 @@ campaign_comm_perf_pivotquery <- paste0(
   A.seven_days_ago = B.date_sevendays and
   A.Brand = B.Brand_B and A.Cat_Level_1 = B.Cat_Level_1_B and A.Cat_Level_2 = B.Cat_Level_2_B
   and A.Cat_Level_3 = B.Cat_Level_3_B
-  LEFT JOIN (
+  FULL JOIN (
   SELECT
   #  FORMAT_DATE('%b', CAST(date AS date)) AS month_previousmonth,
   CAST(date AS date) AS date_previousmonth,
@@ -287,11 +289,46 @@ campaign_comm_perf_pivotquery <- paste0(
 campaigncommercialperf_bqdata <-
   bq_table_download(bq_project_query(project, campaign_comm_perf_pivotquery))
 campaign_commercial_perf_table <- campaigncommercialperf_bqdata %>%
-  select(1:7, 13, 23, 8:12, 18:22, 28:32) %>%
+  select(
+    new_date,
+    Brand,
+    Cat_Level_1,
+    Cat_Level_2,
+    Cat_Level_3,
+    seven_days_ago,
+    previous_month,
+    date_sevendays,
+    date_previousmonth,
+    NMV_current,
+    Item_current,
+    PV_current,
+    CR_current,
+    ASP_current,
+    NMV_sevendays,
+    Item_sevendays,
+    PV_sevendays,
+    CR_sevendays,
+    ASP_sevendays,
+    NMV_previousmonth,
+    Item_previousmonth,
+    PV_previousmonth,
+    CR_previousmonth,
+    ASP_previousmonth
+  ) %>%
   gather(metric, value, 10:24) %>%
   separate(metric, c("metric", "period"), "_") %>%
+  mutate(value = replace(value, is.na(value), 0)) %>%
+  select(-date_sevendays, -date_previousmonth,
+         -seven_days_ago,	-previous_month) %>%
+  mutate_at(c("Brand", 
+              "Cat_Level_1",	
+              "Cat_Level_2",	
+              "Cat_Level_3"), funs(replace(., is.na(.), "no value"))) %>%
+  filter(metric == "NMV" | metric == "Item"| metric == "PV") %>%
+  group_by_at(vars(-value)) %>%
+  summarise(value = sum(value)) %>%
   spread(period, value) %>%
-  select(1:10, present = "current", 12:13)
+  select(1:6, present = "current", 8:9)
 
 # get target data only for the latest upload dates ------------------------------------
 target_data <- target_data %>%
