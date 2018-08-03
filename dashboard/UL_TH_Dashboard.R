@@ -125,7 +125,7 @@ get_actuals_query <-
     16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,
     31,32,33,34,35,36,37,38,39,40,41,42,43,44,45),
     forex_table as (select * from `unified-welder-172709.Lookup_Tables.Forex_Rates` where From_Currency = 'THB'
-    and To_Currency = 'USD')
+    and To_Currency = 'USD' order by Last_Updated desc limit 1)
     select
     Date_of_Week,
     EXTRACT(Year from Date_of_Week) as Year,
@@ -206,7 +206,9 @@ actuals_data <-
 
 # get data for use in campaign commercial performance dashboard -------------------------
 campaign_comm_perf_pivotquery <- paste0(
-  "SELECT case when date is null and date_sevendays is not null then DATE_ADD(CAST(date_sevendays AS date), INTERVAL 7 DAY)
+  "WITH forex_table as (select * from `unified-welder-172709.Lookup_Tables.Forex_Rates` where From_Currency = 'THB'
+    and To_Currency = 'USD' order by Last_Updated desc limit 1)
+  SELECT case when date is null and date_sevendays is not null then DATE_ADD(CAST(date_sevendays AS date), INTERVAL 7 DAY)
   when date is null and date_sevendays is null then DATE_ADD(CAST(date_previousmonth AS date), INTERVAL 1 MONTH)
   else CAST(date AS date) end as new_date, *
   FROM (
@@ -218,12 +220,12 @@ campaign_comm_perf_pivotquery <- paste0(
   Cat_Level_3,
   DATE_SUB(CAST(date AS date), INTERVAL 7 DAY) AS seven_days_ago,
   DATE_SUB(CAST(date AS date), INTERVAL 1 MONTH) AS previous_month,
-  SUM(NMV_Local_Currency) AS NMV_current,
+  SUM(NMV_Local_Currency) * (select 1/rate from forex_table) as NMV_current,
   SUM(Item) AS Item_current,
   SUM(PV) AS PV_current,
   safe_divide(SUM(Item),
   SUM(PV)) AS CR_current,
-  safe_divide(SUM(NMV_Local_Currency),
+  safe_divide(SUM(NMV_Local_Currency) * (select 1/rate from forex_table),
   SUM(Item)) AS ASP_current
   FROM
   `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
@@ -240,12 +242,12 @@ campaign_comm_perf_pivotquery <- paste0(
   CAST(date AS date) AS date_sevendays,
   Brand as Brand_B, Cat_Level_1 as Cat_Level_1_B,
   Cat_Level_2 as Cat_Level_2_B,	Cat_Level_3 as Cat_Level_3_B,
-  SUM(NMV_Local_Currency) AS NMV_sevendays,
+  SUM(NMV_Local_Currency) * (select 1/rate from forex_table) AS NMV_sevendays,
   SUM(Item) AS Item_sevendays,
   SUM(PV) AS PV_sevendays,
   safe_divide(SUM(Item),
   SUM(PV)) AS CR_sevendays,
-  safe_divide(SUM(NMV_Local_Currency),
+  safe_divide(SUM(NMV_Local_Currency) * (select 1/rate from forex_table),
   SUM(Item)) AS ASP_sevendays
   FROM
   `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
@@ -264,12 +266,12 @@ campaign_comm_perf_pivotquery <- paste0(
   CAST(date AS date) AS date_previousmonth,
   Brand as Brand_C, Cat_Level_1 as Cat_Level_1_C,
   Cat_Level_2 as Cat_Level_2_C,	Cat_Level_3 as Cat_Level_3_C,
-  SUM(NMV_Local_Currency) AS NMV_previousmonth,
+  SUM(NMV_Local_Currency) * (select 1/rate from forex_table) AS NMV_previousmonth,
   SUM(Item) AS Item_previousmonth,
   SUM(PV) AS PV_previousmonth,
   safe_divide(SUM(Item),
   SUM(PV)) AS CR_previousmonth,
-  safe_divide(SUM(NMV_Local_Currency),
+  safe_divide(SUM(NMV_Local_Currency) * (select 1/rate from forex_table),
   SUM(Item)) AS ASP_previousmonth
   FROM
   `unified-welder-172709.Daily_Lazada_Report.Daily_Lazada_Sales_*`
@@ -320,9 +322,9 @@ campaign_commercial_perf_table <- campaigncommercialperf_bqdata %>%
   mutate(value = replace(value, is.na(value), 0)) %>%
   select(-date_sevendays, -date_previousmonth,
          -seven_days_ago,	-previous_month) %>%
-  mutate_at(c("Brand", 
-              "Cat_Level_1",	
-              "Cat_Level_2",	
+  mutate_at(c("Brand",
+              "Cat_Level_1",
+              "Cat_Level_2",
               "Cat_Level_3"), funs(replace(., is.na(.), "no value"))) %>%
   filter(metric == "NMV" | metric == "Item"| metric == "PV") %>%
   group_by_at(vars(-value)) %>%
@@ -500,3 +502,4 @@ tryCatch(
     print(paste0(campaign_commercial_perf_table, " failed to upload"))
   }
 )
+
