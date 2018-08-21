@@ -5,6 +5,7 @@ library(reshape2)
 #create a simple data frame
 step = c('1. Product Page', '2. Shopping Cart', '3. Checkout', '4. Purchase')
 users = c(50000, 10000, 5100, 3825) #add in your own numbers here
+# ratio is the dropoff rate
 ratio = users / users[1]
 sales_funnel <- data.frame(step, users, ratio)
 
