@@ -72,6 +72,7 @@ pr_mb = predict_MBatchKMeans(df, km_mb$centroids)
 getcent_mb = km_mb$centroids
 
 # each observation is associated with the nearby centroid
-new_im_mb = getcent_mb[pr_mb, ]
-colnames(new_im_mb) <- colnames(df)
-
+# new_im_mb = getcent_mb[pr_mb, ]
+# colnames(new_im_mb) <- colnames(df)
+df$cluster <- pr_mb
+df$fullVisitorId <- df_csv$fullVisitorId
