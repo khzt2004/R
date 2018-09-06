@@ -14,7 +14,19 @@ df_filtered <- df %>%
   arrange(nchar(Segment)) %>% 
   mutate_at(vars(-Segment), 
             .funs = funs(CompletionRate_PrevStage = round(. / lag(.), 2) ,
-                         DropoffRate_PrevStage = round(1- (. / lag(.)),2)))
+                         DropoffRate_PrevStage = round(1- (. / lag(.)),2))) %>% 
+  select(matches("Segment|CompletionRate_PrevStage"))
+
+ggplot(df_filtered, aes(Segment, CompletionRate)) +
+  geom_col(fill = "#4285f4") +
+  facet_grid(FareClass ~ Funnel, scales="free") +
+  theme_gdocs() +
+  theme(legend.position = "top",
+        text=element_text(colour = "#666666", 
+                          family="Ubuntu"),
+        legend.direction="horizontal",
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank())
 
 write_csv(df_filtered, "SIA_ConvFunnel.csv")
 
