@@ -1,6 +1,7 @@
 library(googleAnalyticsR)
 library(future.apply)
 library(tidyverse)
+library(bigrquery)
 
 ## setup multisession R for your parallel data fetches 
 plan(multisession)
@@ -80,7 +81,7 @@ segmentlist <- c(seg_allUsers,
                  seg_referralusers,
                  seg_convusers) 
 
-segmentlisting <- c(segmentlist[1:4], segmentlist[5:8])
+segmentlisting <- split(segmentlist, (seq_along(segmentlist) - 1L) %/% 4L)
 
 ga_data_final_segment <- data.frame()
 
@@ -169,4 +170,1954 @@ google_analytics_4(ga_id, #=This is a (dynamic) ViewID parameter
                    max = -1,
                    useResourceQuotas = TRUE)
 
+
+# get data directly from bigquery --------------------------------------------------
+
+project <- "api-project-929144044809"
+  
+get_data_query <- paste0(
+  "SELECT
+      date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  # get total entry per page
+  SUM(first_ent) AS Homepage,
+  SUM(second_ent) AS CIB_ChooseFlight,
+  SUM(third_ent) AS CIB_PassengerDetails,
+  SUM(fourth_ent) AS CIB_PaymentDetails,
+  SUM(fifth_ent) AS CIB_BookingConfirmation,
+  # get total completion at each step
+  SUM(first_cplt) AS Homepage_Complete,
+  SUM(second_cplt) AS CIB_ChooseFlight_Complete,
+  SUM(third_cplt) AS CIB_PassengerDetails_Complete,
+  SUM(fourth_cplt) AS CIB_PaymentDetails_Complete,
+  # get total drop-off at each step
+  SUM(first_ent)-SUM(first_cplt) AS Homepage_Drop,
+  SUM(second_ent)-SUM(second_cplt) AS CIB_ChooseFlight_Drop,
+  SUM(third_ent)-SUM(third_cplt) AS CIB_PassengerDetails_Drop,
+  SUM(fourth_ent)-SUM(fourth_cplt) AS CIB_PaymentDetails_Drop,
+  # get direct entrance not from previous step
+  SUM(second_ent)-SUM(first_cplt) AS CIB_ChooseFlight_Indirect,
+  SUM(third_ent)-SUM(second_cplt) AS CIB_PassengerDetails_Indirect,
+  SUM(fourth_ent)-SUM(third_cplt) AS CIB_PaymentDetails_Indirect,
+  SUM(fifth_ent)-SUM(fourth_cplt) AS CIB_BookingConfirmation_Indirect,
+  # add in new requested dimension
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium
+  FROM (
+  #open funnel where a step requires ONLY the previous step
+  SELECT
+  a.date AS date,
+  a.vid AS vid,
+  a.sid AS sid,
+  a.device_category AS device_category,
+  # regroup cabin class value
+  (CASE
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*ECONOMY') THEN 'ECONOMY/PREMIUM ECONOMY'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*BUSINESS') THEN 'BUSINESS'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*(FIRST|SUITE)') THEN 'FIRST'
+  ELSE 'NA' END) AS cabin_class,
+  b.country_ga AS country_ga,
+  
+  b.country_selection AS country_selection,
+  b.channel AS channel,
+  b.source AS source,
+  b.medium AS medium,
+  b.campaign AS campaign,
+  b.source_medium AS source_medium,
+  a.firstPage AS firstPage,
+  a.secondPage AS secondPage,
+  a.thirdPage AS thirdPage,
+  a.fourthPage AS fourthPage,
+  a.fifthPage AS fifthPage,
+  # get entrance to each step
+  IF(a.firstPage >0, 1,0) AS first_ent,
+  IF(a.secondPage >0, 1,0) AS second_ent,
+  IF(a.thirdPage >0, 1,0) AS third_ent,
+  IF(a.fourthPage >0, 1,0) AS fourth_ent,
+  IF(a.fifthPage >0, 1,0) AS fifth_ent,
+  # get completion of each step to the next
+  IF(a.firstPage > 0
+  AND a.firstPage < a.secondPage,1,0) AS first_cplt,
+  IF(a.secondPage > 0
+  AND a.secondPage < a.thirdPage,1,0) AS second_cplt,
+  IF(a.thirdPage > 0
+  AND a.thirdPage < a.fourthPage,1,0) AS third_cplt,
+  IF(a.fourthPage > 0
+  AND a.fourthPage < a.fifthPage,1,0) AS fourth_cplt
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s4.date
+  WHEN s4.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s4.vid
+  WHEN s4.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s4.sid
+  WHEN s4.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s4.device_category
+  WHEN s4.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  IF(s0.firstPage IS NULL,0,s0.firstPage) AS firstPage,
+  IF(s0.secondPage IS NULL,0,s0.secondPage) AS secondPage,
+  IF(s0.thirdPage IS NULL,0,s0.thirdPage) AS thirdPage,
+  IF(s0.fourthPage IS NULL,0,s0.fourthPage) AS fourthPage,
+  IF(s4.firstHit IS NULL,0,s4.firstHit) AS fifthPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s3.date
+  WHEN s3.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s3.vid
+  WHEN s3.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s3.sid
+  WHEN s3.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s3.device_category
+  WHEN s3.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s0.thirdPage AS thirdPage,
+  s3.firstHit AS fourthPage
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s2.date
+  WHEN s2.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s2.vid
+  WHEN s2.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s2.sid
+  WHEN s2.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s2.device_category
+  WHEN s2.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s2.firstHit AS thirdPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s1.date
+  WHEN s1.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s1.vid
+  WHEN s1.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s1.sid
+  WHEN s1.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s1.device_category
+  WHEN s1.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstHit AS firstPage,
+  s1.firstHit AS secondPage
+  FROM (
+  # Begin Subquery #1 aka s0
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24')),
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/Homepage')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s0
+  # End Subquery #1 aka s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #2 aka s1
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_ChooseFlight')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s1
+  # End Subquery #2 aka s1
+  ON
+  s0.vid = s1.vid
+  AND s0.sid = s1.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #3 aka s2
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_PassengerDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s2
+  # End Subquery #3 aka s2
+  ON
+  s0.vid = s2.vid
+  AND s0.sid= s2.sid) AS s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #4 aka s3
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_PaymentDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s3
+  # End Subquery #4 aka s3
+  ON
+  s0.vid = s3.vid
+  AND s0.sid= s3.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #5 aka s4
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_BookingConfirmation')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s4
+  ON
+  s0.vid = s4.vid
+  AND s0.sid= s4.sid) a
+  LEFT JOIN (
+  SELECT
+  date,
+  fullVisitorId AS vid,
+  visitId AS sid,
+  geoNetwork.country AS country_ga,
+  channelGrouping AS channel,
+  trafficSource.source AS source,
+  trafficSource.medium AS medium,
+  trafficSource.campaign AS campaign,
+  CONCAT(trafficSource.source, ' / ', trafficSource.medium) AS source_medium,
+  MAX(IF(customDimensions.index = 9, customDimensions.value, NULL)) WITHIN RECORD AS country_selection,
+  MAX(IF(customDimensions.index = 31, customDimensions.value, NULL)) WITHIN RECORD AS cabin_class
+  
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))) b
+  ON
+  a.vid = b.vid
+  AND a.sid = b.sid
+  AND a.date = b.date)
+  GROUP BY
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium"
+)
+
+df_beforepos <- bq_table_download(bq_project_query(project, 
+                                                   get_data_query,
+                                                   use_legacy_sql = TRUE))
+
+
+
+get_data_query2 <- paste0(
+  "SELECT
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  
+  # point of sale --------------------------------------------
+  point_of_sale,
+  # ----------------------------------------------------------
+  
+  country_selection,
+  # get total entry per page
+  SUM(first_ent) AS Homepage,
+  SUM(second_ent) AS CIB_ChooseFlight,
+  SUM(third_ent) AS CIB_PassengerDetails,
+  SUM(fourth_ent) AS CIB_PaymentDetails,
+  SUM(fifth_ent) AS CIB_BookingConfirmation,
+  # get total completion at each step
+  SUM(first_cplt) AS Homepage_Complete,
+  SUM(second_cplt) AS CIB_ChooseFlight_Complete,
+  SUM(third_cplt) AS CIB_PassengerDetails_Complete,
+  SUM(fourth_cplt) AS CIB_PaymentDetails_Complete,
+  # get total drop-off at each step
+  SUM(first_ent)-SUM(first_cplt) AS Homepage_Drop,
+  SUM(second_ent)-SUM(second_cplt) AS CIB_ChooseFlight_Drop,
+  SUM(third_ent)-SUM(third_cplt) AS CIB_PassengerDetails_Drop,
+  SUM(fourth_ent)-SUM(fourth_cplt) AS CIB_PaymentDetails_Drop,
+  # get direct entrance not from previous step
+  SUM(second_ent)-SUM(first_cplt) AS CIB_ChooseFlight_Indirect,
+  SUM(third_ent)-SUM(second_cplt) AS CIB_PassengerDetails_Indirect,
+  SUM(fourth_ent)-SUM(third_cplt) AS CIB_PaymentDetails_Indirect,
+  SUM(fifth_ent)-SUM(fourth_cplt) AS CIB_BookingConfirmation_Indirect,
+  # add in new requested dimension
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium
+  FROM (
+  #open funnel where a step requires ONLY the previous step
+  SELECT
+  a.date AS date,
+  a.vid AS vid,
+  a.sid AS sid,
+  a.device_category AS device_category,
+  # regroup cabin class value
+  (CASE
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*ECONOMY') THEN 'ECONOMY/PREMIUM ECONOMY'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*BUSINESS') THEN 'BUSINESS'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*(FIRST|SUITE)') THEN 'FIRST'
+  ELSE 'NA' END) AS cabin_class,
+  b.country_ga AS country_ga,
+  
+  # point of sale -------------------------------------------------------
+  b.point_of_sale AS point_of_sale,
+  # ---------------------------------------------------------------------
+  
+  b.country_selection AS country_selection,
+  b.channel AS channel,
+  b.source AS source,
+  b.medium AS medium,
+  b.campaign AS campaign,
+  b.source_medium AS source_medium,
+  a.firstPage AS firstPage,
+  a.secondPage AS secondPage,
+  a.thirdPage AS thirdPage,
+  a.fourthPage AS fourthPage,
+  a.fifthPage AS fifthPage,
+  # get entrance to each step
+  IF(a.firstPage >0, 1,0) AS first_ent,
+  IF(a.secondPage >0, 1,0) AS second_ent,
+  IF(a.thirdPage >0, 1,0) AS third_ent,
+  IF(a.fourthPage >0, 1,0) AS fourth_ent,
+  IF(a.fifthPage >0, 1,0) AS fifth_ent,
+  # get completion of each step to the next
+  IF(a.firstPage > 0
+  AND a.firstPage < a.secondPage,1,0) AS first_cplt,
+  IF(a.secondPage > 0
+  AND a.secondPage < a.thirdPage,1,0) AS second_cplt,
+  IF(a.thirdPage > 0
+  AND a.thirdPage < a.fourthPage,1,0) AS third_cplt,
+  IF(a.fourthPage > 0
+  AND a.fourthPage < a.fifthPage,1,0) AS fourth_cplt
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s4.date
+  WHEN s4.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s4.vid
+  WHEN s4.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s4.sid
+  WHEN s4.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s4.device_category
+  WHEN s4.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  IF(s0.firstPage IS NULL,0,s0.firstPage) AS firstPage,
+  IF(s0.secondPage IS NULL,0,s0.secondPage) AS secondPage,
+  IF(s0.thirdPage IS NULL,0,s0.thirdPage) AS thirdPage,
+  IF(s0.fourthPage IS NULL,0,s0.fourthPage) AS fourthPage,
+  IF(s4.firstHit IS NULL,0,s4.firstHit) AS fifthPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s3.date
+  WHEN s3.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s3.vid
+  WHEN s3.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s3.sid
+  WHEN s3.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s3.device_category
+  WHEN s3.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s0.thirdPage AS thirdPage,
+  s3.firstHit AS fourthPage
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s2.date
+  WHEN s2.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s2.vid
+  WHEN s2.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s2.sid
+  WHEN s2.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s2.device_category
+  WHEN s2.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s2.firstHit AS thirdPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s1.date
+  WHEN s1.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s1.vid
+  WHEN s1.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s1.sid
+  WHEN s1.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s1.device_category
+  WHEN s1.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstHit AS firstPage,
+  s1.firstHit AS secondPage
+  FROM (
+  # Begin Subquery #1 aka s0
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24')),
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, '/Homepage')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s0
+  # End Subquery #1 aka s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #2 aka s1
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_ChooseFlight')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s1
+  # End Subquery #2 aka s1
+  ON
+  s0.vid = s1.vid
+  AND s0.sid = s1.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #3 aka s2
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_PassengerDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s2
+  # End Subquery #3 aka s2
+  ON
+  s0.vid = s2.vid
+  AND s0.sid= s2.sid) AS s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #4 aka s3
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_PaymentDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s3
+  # End Subquery #4 aka s3
+  ON
+  s0.vid = s3.vid
+  AND s0.sid= s3.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #5 aka s4
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_BookingConfirmation')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s4
+  ON
+  s0.vid = s4.vid
+  AND s0.sid= s4.sid) a
+  LEFT JOIN (
+  SELECT
+  date,
+  fullVisitorId AS vid,
+  visitId AS sid,
+  geoNetwork.country AS country_ga,
+  channelGrouping AS channel,
+  trafficSource.source AS source,
+  trafficSource.medium AS medium,
+  trafficSource.campaign AS campaign,
+  CONCAT(trafficSource.source, ' / ', trafficSource.medium) AS source_medium,
+  MAX(IF(customDimensions.index = 9, customDimensions.value, NULL)) WITHIN RECORD AS country_selection,
+  MAX(IF(customDimensions.index = 31, customDimensions.value, NULL)) WITHIN RECORD AS cabin_class,
+  # new CD --------------------------------------------------------------------
+  MAX(IF(customDimensions.index = 22, customDimensions.value, NULL)) WITHIN RECORD AS point_of_sale
+  
+  # ---------------------------------------------------------------------------
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))) b
+  ON
+  a.vid = b.vid
+  AND a.sid = b.sid
+  AND a.date = b.date)
+  GROUP BY
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  point_of_sale,
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium"
+)
+
+df_afterpos <- bq_table_download(bq_project_query(project, 
+                                                   get_data_query2,
+                                                   use_legacy_sql = TRUE))
+
+
+get_data_query_ORB <- paste0(
+  "SELECT
+      date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  # get total entry per page
+  SUM(first_ent) AS Homepage,
+  SUM(second_ent) AS ORB_ChooseFlight,
+  SUM(third_ent) AS ORB_PassengerDetails,
+  SUM(fourth_ent) AS ORB_PaymentDetails,
+  SUM(fifth_ent) AS ORB_BookingConfirmation,
+  # get total completion at each step
+  SUM(first_cplt) AS Homepage_Complete,
+  SUM(second_cplt) AS ORB_ChooseFlight_Complete,
+  SUM(third_cplt) AS ORB_PassengerDetails_Complete,
+  SUM(fourth_cplt) AS ORB_PaymentDetails_Complete,
+  # get total drop-off at each step
+  SUM(first_ent)-SUM(first_cplt) AS Homepage_Drop,
+  SUM(second_ent)-SUM(second_cplt) AS ORB_ChooseFlight_Drop,
+  SUM(third_ent)-SUM(third_cplt) AS ORB_PassengerDetails_Drop,
+  SUM(fourth_ent)-SUM(fourth_cplt) AS ORB_PaymentDetails_Drop,
+  # get direct entrance not from previous step
+  SUM(second_ent)-SUM(first_cplt) AS ORB_ChooseFlight_Indirect,
+  SUM(third_ent)-SUM(second_cplt) AS ORB_PassengerDetails_Indirect,
+  SUM(fourth_ent)-SUM(third_cplt) AS ORB_PaymentDetails_Indirect,
+  SUM(fifth_ent)-SUM(fourth_cplt) AS ORB_BookingConfirmation_Indirect,
+  # add in new requested dimension
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium
+  FROM (
+  #open funnel where a step requires ONLY the previous step
+  SELECT
+  a.date AS date,
+  a.vid AS vid,
+  a.sid AS sid,
+  a.device_category AS device_category,
+  # regroup cabin class value
+  (CASE
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*ECONOMY') THEN 'ECONOMY/PREMIUM ECONOMY'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*BUSINESS') THEN 'BUSINESS'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*(FIRST|SUITE)') THEN 'FIRST'
+  ELSE 'NA' END) AS cabin_class,
+  b.country_ga AS country_ga,
+  b.country_selection AS country_selection,
+  b.channel AS channel,
+  b.source AS source,
+  b.medium AS medium,
+  b.campaign AS campaign,
+  b.source_medium AS source_medium,
+  a.firstPage AS firstPage,
+  a.secondPage AS secondPage,
+  a.thirdPage AS thirdPage,
+  a.fourthPage AS fourthPage,
+  a.fifthPage AS fifthPage,
+  # get entrance to each step
+  IF(a.firstPage >0, 1,0) AS first_ent,
+  IF(a.secondPage >0, 1,0) AS second_ent,
+  IF(a.thirdPage >0, 1,0) AS third_ent,
+  IF(a.fourthPage >0, 1,0) AS fourth_ent,
+  IF(a.fifthPage >0, 1,0) AS fifth_ent,
+  # get completion of each step to the next
+  IF(a.firstPage > 0
+  AND a.firstPage < a.secondPage,1,0) AS first_cplt,
+  IF(a.secondPage > 0
+  AND a.secondPage < a.thirdPage,1,0) AS second_cplt,
+  IF(a.thirdPage > 0
+  AND a.thirdPage < a.fourthPage,1,0) AS third_cplt,
+  IF(a.fourthPage > 0
+  AND a.fourthPage < a.fifthPage,1,0) AS fourth_cplt
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s4.date
+  WHEN s4.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s4.vid
+  WHEN s4.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s4.sid
+  WHEN s4.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s4.device_category
+  WHEN s4.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  IF(s0.firstPage IS NULL,0,s0.firstPage) AS firstPage,
+  IF(s0.secondPage IS NULL,0,s0.secondPage) AS secondPage,
+  IF(s0.thirdPage IS NULL,0,s0.thirdPage) AS thirdPage,
+  IF(s0.fourthPage IS NULL,0,s0.fourthPage) AS fourthPage,
+  IF(s4.firstHit IS NULL,0,s4.firstHit) AS fifthPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s3.date
+  WHEN s3.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s3.vid
+  WHEN s3.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s3.sid
+  WHEN s3.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s3.device_category
+  WHEN s3.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s0.thirdPage AS thirdPage,
+  s3.firstHit AS fourthPage
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s2.date
+  WHEN s2.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s2.vid
+  WHEN s2.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s2.sid
+  WHEN s2.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s2.device_category
+  WHEN s2.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s2.firstHit AS thirdPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s1.date
+  WHEN s1.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s1.vid
+  WHEN s1.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s1.sid
+  WHEN s1.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s1.device_category
+  WHEN s1.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstHit AS firstPage,
+  s1.firstHit AS secondPage
+  FROM (
+  # Begin Subquery #1 aka s0
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/Homepage')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s0
+  # End Subquery #1 aka s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #2 aka s1
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_ChooseFlight')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s1
+  # End Subquery #2 aka s1
+  ON
+  s0.vid = s1.vid
+  AND s0.sid = s1.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #3 aka s2
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_PassengerDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s2
+  # End Subquery #3 aka s2
+  ON
+  s0.vid = s2.vid
+  AND s0.sid= s2.sid) AS s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #4 aka s3
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_PaymentDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s3
+  # End Subquery #4 aka s3
+  ON
+  s0.vid = s3.vid
+  AND s0.sid= s3.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #5 aka s4
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_BookingConfirmation')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s4
+  ON
+  s0.vid = s4.vid
+  AND s0.sid= s4.sid) a
+  LEFT JOIN (
+  SELECT
+  date,
+  fullVisitorId AS vid,
+  visitId AS sid,
+  geoNetwork.country AS country_ga,
+  channelGrouping AS channel,
+  trafficSource.source AS source,
+  trafficSource.medium AS medium,
+  trafficSource.campaign AS campaign,
+  CONCAT(trafficSource.source, ' / ', trafficSource.medium) AS source_medium,
+  MAX(IF(customDimensions.index = 9, customDimensions.value, NULL)) WITHIN RECORD AS country_selection,
+  MAX(IF(customDimensions.index = 31, customDimensions.value, NULL)) WITHIN RECORD AS cabin_class
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))) b
+  ON
+  a.vid = b.vid
+  AND a.sid = b.sid
+  AND a.date = b.date)
+  GROUP BY
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium"
+)
+
+df_ORB_beforepos <- bq_table_download(bq_project_query(project, 
+                                                   get_data_query_ORB,
+                                                   use_legacy_sql = TRUE))
+
+
+get_data_query_ORB2 <- paste0(
+  "SELECT
+      date,
+  device_category,
+  cabin_class,
+  country_ga,
+  
+  # point of sale --------------------------------------------
+  point_of_sale,
+  # ----------------------------------------------------------
+  
+  country_selection,
+  # get total entry per page
+  SUM(first_ent) AS Homepage,
+  SUM(second_ent) AS ORB_ChooseFlight,
+  SUM(third_ent) AS ORB_PassengerDetails,
+  SUM(fourth_ent) AS ORB_PaymentDetails,
+  SUM(fifth_ent) AS ORB_BookingConfirmation,
+  # get total completion at each step
+  SUM(first_cplt) AS Homepage_Complete,
+  SUM(second_cplt) AS ORB_ChooseFlight_Complete,
+  SUM(third_cplt) AS ORB_PassengerDetails_Complete,
+  SUM(fourth_cplt) AS ORB_PaymentDetails_Complete,
+  # get total drop-off at each step
+  SUM(first_ent)-SUM(first_cplt) AS Homepage_Drop,
+  SUM(second_ent)-SUM(second_cplt) AS ORB_ChooseFlight_Drop,
+  SUM(third_ent)-SUM(third_cplt) AS ORB_PassengerDetails_Drop,
+  SUM(fourth_ent)-SUM(fourth_cplt) AS ORB_PaymentDetails_Drop,
+  # get direct entrance not from previous step
+  SUM(second_ent)-SUM(first_cplt) AS ORB_ChooseFlight_Indirect,
+  SUM(third_ent)-SUM(second_cplt) AS ORB_PassengerDetails_Indirect,
+  SUM(fourth_ent)-SUM(third_cplt) AS ORB_PaymentDetails_Indirect,
+  SUM(fifth_ent)-SUM(fourth_cplt) AS ORB_BookingConfirmation_Indirect,
+  # add in new requested dimension
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium
+  FROM (
+  #open funnel where a step requires ONLY the previous step
+  SELECT
+  a.date AS date,
+  a.vid AS vid,
+  a.sid AS sid,
+  a.device_category AS device_category,
+  # regroup cabin class value
+  (CASE
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*ECONOMY') THEN 'ECONOMY/PREMIUM ECONOMY'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*BUSINESS') THEN 'BUSINESS'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*(FIRST|SUITE)') THEN 'FIRST'
+  ELSE 'NA' END) AS cabin_class,
+  b.country_ga AS country_ga,
+  # point of sale -------------------------------------------------------
+  b.point_of_sale AS point_of_sale,
+  # ---------------------------------------------------------------------
+  b.country_selection AS country_selection,
+  b.channel AS channel,
+  b.source AS source,
+  b.medium AS medium,
+  b.campaign AS campaign,
+  b.source_medium AS source_medium,
+  a.firstPage AS firstPage,
+  a.secondPage AS secondPage,
+  a.thirdPage AS thirdPage,
+  a.fourthPage AS fourthPage,
+  a.fifthPage AS fifthPage,
+  # get entrance to each step
+  IF(a.firstPage >0, 1,0) AS first_ent,
+  IF(a.secondPage >0, 1,0) AS second_ent,
+  IF(a.thirdPage >0, 1,0) AS third_ent,
+  IF(a.fourthPage >0, 1,0) AS fourth_ent,
+  IF(a.fifthPage >0, 1,0) AS fifth_ent,
+  # get completion of each step to the next
+  IF(a.firstPage > 0
+  AND a.firstPage < a.secondPage,1,0) AS first_cplt,
+  IF(a.secondPage > 0
+  AND a.secondPage < a.thirdPage,1,0) AS second_cplt,
+  IF(a.thirdPage > 0
+  AND a.thirdPage < a.fourthPage,1,0) AS third_cplt,
+  IF(a.fourthPage > 0
+  AND a.fourthPage < a.fifthPage,1,0) AS fourth_cplt
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s4.date
+  WHEN s4.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s4.vid
+  WHEN s4.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s4.sid
+  WHEN s4.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s4.device_category
+  WHEN s4.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  IF(s0.firstPage IS NULL,0,s0.firstPage) AS firstPage,
+  IF(s0.secondPage IS NULL,0,s0.secondPage) AS secondPage,
+  IF(s0.thirdPage IS NULL,0,s0.thirdPage) AS thirdPage,
+  IF(s0.fourthPage IS NULL,0,s0.fourthPage) AS fourthPage,
+  IF(s4.firstHit IS NULL,0,s4.firstHit) AS fifthPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s3.date
+  WHEN s3.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s3.vid
+  WHEN s3.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s3.sid
+  WHEN s3.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s3.device_category
+  WHEN s3.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s0.thirdPage AS thirdPage,
+  s3.firstHit AS fourthPage
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s2.date
+  WHEN s2.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s2.vid
+  WHEN s2.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s2.sid
+  WHEN s2.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s2.device_category
+  WHEN s2.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s2.firstHit AS thirdPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s1.date
+  WHEN s1.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s1.vid
+  WHEN s1.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s1.sid
+  WHEN s1.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s1.device_category
+  WHEN s1.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstHit AS firstPage,
+  s1.firstHit AS secondPage
+  FROM (
+  # Begin Subquery #1 aka s0
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/Homepage')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s0
+  # End Subquery #1 aka s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #2 aka s1
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_ChooseFlight')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s1
+  # End Subquery #2 aka s1
+  ON
+  s0.vid = s1.vid
+  AND s0.sid = s1.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #3 aka s2
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_PassengerDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s2
+  # End Subquery #3 aka s2
+  ON
+  s0.vid = s2.vid
+  AND s0.sid= s2.sid) AS s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #4 aka s3
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_PaymentDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s3
+  # End Subquery #4 aka s3
+  ON
+  s0.vid = s3.vid
+  AND s0.sid= s3.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #5 aka s4
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_BookingConfirmation')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s4
+  ON
+  s0.vid = s4.vid
+  AND s0.sid= s4.sid) a
+  LEFT JOIN (
+  SELECT
+  date,
+  fullVisitorId AS vid,
+  visitId AS sid,
+  geoNetwork.country AS country_ga,
+  channelGrouping AS channel,
+  trafficSource.source AS source,
+  trafficSource.medium AS medium,
+  trafficSource.campaign AS campaign,
+  CONCAT(trafficSource.source, ' / ', trafficSource.medium) AS source_medium,
+  MAX(IF(customDimensions.index = 9, customDimensions.value, NULL)) WITHIN RECORD AS country_selection,
+  MAX(IF(customDimensions.index = 31, customDimensions.value, NULL)) WITHIN RECORD AS cabin_class,
+  # new CD --------------------------------------------------------------------
+  MAX(IF(customDimensions.index = 22, customDimensions.value, NULL)) WITHIN RECORD AS point_of_sale
+  
+  # ---------------------------------------------------------------------------
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))) b
+  ON
+  a.vid = b.vid
+  AND a.sid = b.sid
+  AND a.date = b.date)
+  GROUP BY
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  point_of_sale,
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium"
+)
+
+df_ORB_afterpos <- bq_table_download(bq_project_query(project, 
+                                                       get_data_query_ORB2,
+                                                       use_legacy_sql = TRUE))
+
+
+get_data_query_ORB3 <- paste0(
+  "SELECT *,
+ CASE 
+  WHEN country_ga IS NOT NULL THEN country_ga 
+  WHEN country_ga IS NULL AND point_of_sale IS NULL THEN 'NULL' 
+  WHEN point_of_sale IS NOT NULL AND country_ga IS NULL THEN point_of_sale 
+  END AS POS_matched
+  from(
+  SELECT
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  
+  # point of sale --------------------------------------------
+  point_of_sale,
+  # ----------------------------------------------------------
+  
+  country_selection,
+  # get total entry per page
+  SUM(first_ent) AS Homepage,
+  SUM(second_ent) AS ORB_ChooseFlight,
+  SUM(third_ent) AS ORB_PassengerDetails,
+  SUM(fourth_ent) AS ORB_PaymentDetails,
+  SUM(fifth_ent) AS ORB_BookingConfirmation,
+  # get total completion at each step
+  SUM(first_cplt) AS Homepage_Complete,
+  SUM(second_cplt) AS ORB_ChooseFlight_Complete,
+  SUM(third_cplt) AS ORB_PassengerDetails_Complete,
+  SUM(fourth_cplt) AS ORB_PaymentDetails_Complete,
+  # get total drop-off at each step
+  SUM(first_ent)-SUM(first_cplt) AS Homepage_Drop,
+  SUM(second_ent)-SUM(second_cplt) AS ORB_ChooseFlight_Drop,
+  SUM(third_ent)-SUM(third_cplt) AS ORB_PassengerDetails_Drop,
+  SUM(fourth_ent)-SUM(fourth_cplt) AS ORB_PaymentDetails_Drop,
+  # get direct entrance not from previous step
+  SUM(second_ent)-SUM(first_cplt) AS ORB_ChooseFlight_Indirect,
+  SUM(third_ent)-SUM(second_cplt) AS ORB_PassengerDetails_Indirect,
+  SUM(fourth_ent)-SUM(third_cplt) AS ORB_PaymentDetails_Indirect,
+  SUM(fifth_ent)-SUM(fourth_cplt) AS ORB_BookingConfirmation_Indirect,
+  # add in new requested dimension
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium
+  FROM (
+  #open funnel where a step requires ONLY the previous step
+  SELECT
+  a.date AS date,
+  a.vid AS vid,
+  a.sid AS sid,
+  a.device_category AS device_category,
+  # regroup cabin class value
+  (CASE
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*ECONOMY') THEN 'ECONOMY/PREMIUM ECONOMY'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*BUSINESS') THEN 'BUSINESS'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*(FIRST|SUITE)') THEN 'FIRST'
+  ELSE 'NA' END) AS cabin_class,
+  b.country_ga AS country_ga,
+  # point of sale -------------------------------------------------------
+  b.point_of_sale AS point_of_sale,
+  # ---------------------------------------------------------------------
+  b.country_selection AS country_selection,
+  b.channel AS channel,
+  b.source AS source,
+  b.medium AS medium,
+  b.campaign AS campaign,
+  b.source_medium AS source_medium,
+  a.firstPage AS firstPage,
+  a.secondPage AS secondPage,
+  a.thirdPage AS thirdPage,
+  a.fourthPage AS fourthPage,
+  a.fifthPage AS fifthPage,
+  # get entrance to each step
+  IF(a.firstPage >0, 1,0) AS first_ent,
+  IF(a.secondPage >0, 1,0) AS second_ent,
+  IF(a.thirdPage >0, 1,0) AS third_ent,
+  IF(a.fourthPage >0, 1,0) AS fourth_ent,
+  IF(a.fifthPage >0, 1,0) AS fifth_ent,
+  # get completion of each step to the next
+  IF(a.firstPage > 0
+  AND a.firstPage < a.secondPage,1,0) AS first_cplt,
+  IF(a.secondPage > 0
+  AND a.secondPage < a.thirdPage,1,0) AS second_cplt,
+  IF(a.thirdPage > 0
+  AND a.thirdPage < a.fourthPage,1,0) AS third_cplt,
+  IF(a.fourthPage > 0
+  AND a.fourthPage < a.fifthPage,1,0) AS fourth_cplt
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s4.date
+  WHEN s4.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s4.vid
+  WHEN s4.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s4.sid
+  WHEN s4.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s4.device_category
+  WHEN s4.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  IF(s0.firstPage IS NULL,0,s0.firstPage) AS firstPage,
+  IF(s0.secondPage IS NULL,0,s0.secondPage) AS secondPage,
+  IF(s0.thirdPage IS NULL,0,s0.thirdPage) AS thirdPage,
+  IF(s0.fourthPage IS NULL,0,s0.fourthPage) AS fourthPage,
+  IF(s4.firstHit IS NULL,0,s4.firstHit) AS fifthPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s3.date
+  WHEN s3.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s3.vid
+  WHEN s3.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s3.sid
+  WHEN s3.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s3.device_category
+  WHEN s3.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s0.thirdPage AS thirdPage,
+  s3.firstHit AS fourthPage
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s2.date
+  WHEN s2.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s2.vid
+  WHEN s2.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s2.sid
+  WHEN s2.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s2.device_category
+  WHEN s2.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s2.firstHit AS thirdPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s1.date
+  WHEN s1.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s1.vid
+  WHEN s1.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s1.sid
+  WHEN s1.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s1.device_category
+  WHEN s1.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstHit AS firstPage,
+  s1.firstHit AS secondPage
+  FROM (
+  # Begin Subquery #1 aka s0
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/Homepage')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s0
+  # End Subquery #1 aka s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #2 aka s1
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_ChooseFlight')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s1
+  # End Subquery #2 aka s1
+  ON
+  s0.vid = s1.vid
+  AND s0.sid = s1.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #3 aka s2
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_PassengerDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s2
+  # End Subquery #3 aka s2
+  ON
+  s0.vid = s2.vid
+  AND s0.sid= s2.sid) AS s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #4 aka s3
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_PaymentDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s3
+  # End Subquery #4 aka s3
+  ON
+  s0.vid = s3.vid
+  AND s0.sid= s3.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #5 aka s4
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/ORB_BookingConfirmation')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s4
+  ON
+  s0.vid = s4.vid
+  AND s0.sid= s4.sid) a
+  LEFT JOIN (
+  SELECT
+  date,
+  fullVisitorId AS vid,
+  visitId AS sid,
+  geoNetwork.country AS country_ga,
+  channelGrouping AS channel,
+  trafficSource.source AS source,
+  trafficSource.medium AS medium,
+  trafficSource.campaign AS campaign,
+  CONCAT(trafficSource.source, ' / ', trafficSource.medium) AS source_medium,
+  MAX(IF(customDimensions.index = 9, customDimensions.value, NULL)) WITHIN RECORD AS country_selection,
+  MAX(IF(customDimensions.index = 31, customDimensions.value, NULL)) WITHIN RECORD AS cabin_class,
+  # new CD --------------------------------------------------------------------
+  MAX(IF(customDimensions.index = 22, customDimensions.value, NULL)) WITHIN RECORD AS point_of_sale
+  
+  # ---------------------------------------------------------------------------
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))) b
+  ON
+  a.vid = b.vid
+  AND a.sid = b.sid
+  AND a.date = b.date)
+  GROUP BY
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  point_of_sale,
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium) as fulltable
+  LEFT JOIN ( 
+  SELECT 
+  * 
+  FROM 
+  [api-project-929144044809:46948678.CountryByteCode]) CountryByteCode 
+  ON 
+  fulltable.point_of_sale = CountryByteCode.Country_Code"
+)
+
+df_ORB_joinpos <- bq_table_download(bq_project_query(project, 
+                                                       get_data_query_ORB3,
+                                                       use_legacy_sql = TRUE))
+
+
+get_data_query_CIB4 <- paste0(
+  "SELECT *,
+ CASE 
+  WHEN country_ga IS NOT NULL THEN country_ga 
+  WHEN country_ga IS NULL AND point_of_sale IS NULL THEN 'NULL' 
+  WHEN point_of_sale IS NOT NULL AND country_ga IS NULL THEN point_of_sale 
+  END AS POS_matched
+  from(
+  SELECT
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  
+  # point of sale --------------------------------------------
+  point_of_sale,
+  # ----------------------------------------------------------
+  
+  country_selection,
+  # get total entry per page
+  SUM(first_ent) AS Homepage,
+  SUM(second_ent) AS CIB_ChooseFlight,
+  SUM(third_ent) AS CIB_PassengerDetails,
+  SUM(fourth_ent) AS CIB_PaymentDetails,
+  SUM(fifth_ent) AS CIB_BookingConfirmation,
+  # get total completion at each step
+  SUM(first_cplt) AS Homepage_Complete,
+  SUM(second_cplt) AS CIB_ChooseFlight_Complete,
+  SUM(third_cplt) AS CIB_PassengerDetails_Complete,
+  SUM(fourth_cplt) AS CIB_PaymentDetails_Complete,
+  # get total drop-off at each step
+  SUM(first_ent)-SUM(first_cplt) AS Homepage_Drop,
+  SUM(second_ent)-SUM(second_cplt) AS CIB_ChooseFlight_Drop,
+  SUM(third_ent)-SUM(third_cplt) AS CIB_PassengerDetails_Drop,
+  SUM(fourth_ent)-SUM(fourth_cplt) AS CIB_PaymentDetails_Drop,
+  # get direct entrance not from previous step
+  SUM(second_ent)-SUM(first_cplt) AS CIB_ChooseFlight_Indirect,
+  SUM(third_ent)-SUM(second_cplt) AS CIB_PassengerDetails_Indirect,
+  SUM(fourth_ent)-SUM(third_cplt) AS CIB_PaymentDetails_Indirect,
+  SUM(fifth_ent)-SUM(fourth_cplt) AS CIB_BookingConfirmation_Indirect,
+  # add in new requested dimension
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium
+  FROM (
+  #open funnel where a step requires ONLY the previous step
+  SELECT
+  a.date AS date,
+  a.vid AS vid,
+  a.sid AS sid,
+  a.device_category AS device_category,
+  # regroup cabin class value
+  (CASE
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*ECONOMY') THEN 'ECONOMY/PREMIUM ECONOMY'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*BUSINESS') THEN 'BUSINESS'
+  WHEN REGEXP_MATCH(b.cabin_class, r'.*(FIRST|SUITE)') THEN 'FIRST'
+  ELSE 'NA' END) AS cabin_class,
+  b.country_ga AS country_ga,
+  
+  # point of sale -------------------------------------------------------
+  b.point_of_sale AS point_of_sale,
+  # ---------------------------------------------------------------------
+  
+  b.country_selection AS country_selection,
+  b.channel AS channel,
+  b.source AS source,
+  b.medium AS medium,
+  b.campaign AS campaign,
+  b.source_medium AS source_medium,
+  a.firstPage AS firstPage,
+  a.secondPage AS secondPage,
+  a.thirdPage AS thirdPage,
+  a.fourthPage AS fourthPage,
+  a.fifthPage AS fifthPage,
+  # get entrance to each step
+  IF(a.firstPage >0, 1,0) AS first_ent,
+  IF(a.secondPage >0, 1,0) AS second_ent,
+  IF(a.thirdPage >0, 1,0) AS third_ent,
+  IF(a.fourthPage >0, 1,0) AS fourth_ent,
+  IF(a.fifthPage >0, 1,0) AS fifth_ent,
+  # get completion of each step to the next
+  IF(a.firstPage > 0
+  AND a.firstPage < a.secondPage,1,0) AS first_cplt,
+  IF(a.secondPage > 0
+  AND a.secondPage < a.thirdPage,1,0) AS second_cplt,
+  IF(a.thirdPage > 0
+  AND a.thirdPage < a.fourthPage,1,0) AS third_cplt,
+  IF(a.fourthPage > 0
+  AND a.fourthPage < a.fifthPage,1,0) AS fourth_cplt
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s4.date
+  WHEN s4.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s4.vid
+  WHEN s4.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s4.sid
+  WHEN s4.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s4.device_category
+  WHEN s4.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  IF(s0.firstPage IS NULL,0,s0.firstPage) AS firstPage,
+  IF(s0.secondPage IS NULL,0,s0.secondPage) AS secondPage,
+  IF(s0.thirdPage IS NULL,0,s0.thirdPage) AS thirdPage,
+  IF(s0.fourthPage IS NULL,0,s0.fourthPage) AS fourthPage,
+  IF(s4.firstHit IS NULL,0,s4.firstHit) AS fifthPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s3.date
+  WHEN s3.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s3.vid
+  WHEN s3.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s3.sid
+  WHEN s3.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s3.device_category
+  WHEN s3.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s0.thirdPage AS thirdPage,
+  s3.firstHit AS fourthPage
+  FROM (
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s2.date
+  WHEN s2.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s2.vid
+  WHEN s2.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s2.sid
+  WHEN s2.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s2.device_category
+  WHEN s2.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstPage AS firstPage,
+  s0.secondPage AS secondPage,
+  s2.firstHit AS thirdPage from(
+  SELECT
+  (CASE
+  WHEN s0.date IS NULL THEN s1.date
+  WHEN s1.date IS NULL THEN s0.date
+  ELSE s0.date END) AS date,
+  (CASE
+  WHEN s0.vid IS NULL THEN s1.vid
+  WHEN s1.vid IS NULL THEN s0.vid
+  ELSE s0.vid END) AS vid,
+  (CASE
+  WHEN s0.sid IS NULL THEN s1.sid
+  WHEN s1.sid IS NULL THEN s0.sid
+  ELSE s0.sid END) AS sid,
+  (CASE
+  WHEN s0.device_category IS NULL THEN s1.device_category
+  WHEN s1.device_category IS NULL THEN s0.device_category
+  ELSE s0.device_category END) AS device_category,
+  s0.firstHit AS firstPage,
+  s1.firstHit AS secondPage
+  FROM (
+  # Begin Subquery #1 aka s0
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24')),
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/Homepage')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s0
+  # End Subquery #1 aka s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #2 aka s1
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_ChooseFlight')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s1
+  # End Subquery #2 aka s1
+  ON
+  s0.vid = s1.vid
+  AND s0.sid = s1.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #3 aka s2
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_PassengerDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s2
+  # End Subquery #3 aka s2
+  ON
+  s0.vid = s2.vid
+  AND s0.sid= s2.sid) AS s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #4 aka s3
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_PaymentDetails')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s3
+  # End Subquery #4 aka s3
+  ON
+  s0.vid = s3.vid
+  AND s0.sid= s3.sid) s0
+  FULL OUTER JOIN EACH (
+  # Begin Subquery #5 aka s4
+  SELECT
+  fullVisitorId AS vid,
+  visitId AS sid,
+  date,
+  device.deviceCategory AS device_category,
+  MIN(hits.hitNumber) AS firstHit
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))
+  WHERE
+  REGEXP_MATCH(hits.page.pagePath, r'/CIB_BookingConfirmation')
+  AND totals.visits = 1
+  GROUP BY
+  vid,
+  sid,
+  date,
+  device_category) s4
+  ON
+  s0.vid = s4.vid
+  AND s0.sid= s4.sid) a
+  LEFT JOIN (
+  SELECT
+  date,
+  fullVisitorId AS vid,
+  visitId AS sid,
+  geoNetwork.country AS country_ga,
+  channelGrouping AS channel,
+  trafficSource.source AS source,
+  trafficSource.medium AS medium,
+  trafficSource.campaign AS campaign,
+  CONCAT(trafficSource.source, ' / ', trafficSource.medium) AS source_medium,
+  MAX(IF(customDimensions.index = 9, customDimensions.value, NULL)) WITHIN RECORD AS country_selection,
+  MAX(IF(customDimensions.index = 31, customDimensions.value, NULL)) WITHIN RECORD AS cabin_class,
+  # new CD --------------------------------------------------------------------
+  MAX(IF(customDimensions.index = 22, customDimensions.value, NULL)) WITHIN RECORD AS point_of_sale
+  
+  # ---------------------------------------------------------------------------
+  FROM
+  TABLE_DATE_RANGE([api-project-929144044809:46948678.ga_sessions_], 
+  TIMESTAMP('2018-07-22'), TIMESTAMP('2018-07-24'))) b
+  ON
+  a.vid = b.vid
+  AND a.sid = b.sid
+  AND a.date = b.date)
+  GROUP BY
+  date,
+  device_category,
+  cabin_class,
+  country_ga,
+  country_selection,
+  point_of_sale,
+  channel,
+  source,
+  medium,
+  campaign,
+  source_medium) as fulltable
+  LEFT JOIN ( 
+  SELECT 
+  * 
+  FROM 
+  [api-project-929144044809:46948678.CountryByteCode]) CountryByteCode 
+  ON 
+  fulltable.point_of_sale = CountryByteCode.Country_Code"
+)
+
+df_CIB_joinpos <- bq_table_download(bq_project_query(project, 
+                                                       get_data_query_CIB4,
+                                                       use_legacy_sql = TRUE))
+
+cib <- df_CIB_joinpos %>% 
+  group_by(POS_matched) %>% 
+  summarise(Homepage = sum(fulltable_Homepage)) %>% 
+  mutate(percent = round(Homepage / sum(Homepage),2))
+
+orb <- df_ORB_joinpos %>% 
+  group_by(POS_matched, fulltable_device_category) %>% 
+  summarise(Homepage = sum(fulltable_Homepage)) %>% 
+  mutate(percent = round(Homepage / sum(Homepage),2))
+
+old_orb <- df_ORB_afterpos %>% 
+  mutate(POS = case_when(!is.na(country_ga) ~ country_ga,
+                         is.na(country_ga) & is.na(point_of_sale) ~ 'null',
+                         !is.na(point_of_sale) & is.na(country_ga) ~ point_of_sale)) %>% 
+  #filter(POS == 'Australia') %>% 
+  group_by(POS, device_category) %>% 
+  summarise(Homepage = sum(Homepage))
 
