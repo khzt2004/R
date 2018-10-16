@@ -129,7 +129,7 @@ clickstream_query <- paste0(
   hits.transaction.transactionId IS NOT NULL )
   AND (hits.hitNumber=1
   OR (hits.transaction.transactionId IS NOT NULL AND hcv.customVarName = 'isNew'))
-  AND ( hits.transaction.transactionId IS NOT NULL ) 
+  AND ( hits.transaction.transactionId IS NOT NULL ) )
   order by
   fullVisitorId,
   visitStartTime ASC,
