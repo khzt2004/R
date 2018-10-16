@@ -3,8 +3,8 @@ library(bigrquery)
 library(lubridate)
 library(fst)
 
-# to do: change weights in attribution data
-# 16/10/2018: linear attribution weights added 
+# to do: change weights in attribution data, validate first touch data in clickstream data
+# 16/10/2018: linear and last touch attribution weights added in attribution query
 # first / mid / last interaction order is weighted number of transactions
 
 # write.fst(clickstream_query_data, "clickstream_query_data.fst")
@@ -30,6 +30,7 @@ clickstream_query <- paste0(
   FROM
   (
   SELECT
+  min(interaction) over(partition by fullVisitorId, nth_transaction) as min_interaction,
   max(interaction) over(partition by fullVisitorId, nth_transaction) as max_interaction, 
   LAST_VALUE(transactionid) OVER (PARTITION BY fullVisitorId, nth_transaction 
   ORDER BY interaction
@@ -129,7 +130,7 @@ clickstream_query <- paste0(
   hits.transaction.transactionId IS NOT NULL )
   AND (hits.hitNumber=1
   OR (hits.transaction.transactionId IS NOT NULL AND hcv.customVarName = 'isNew'))
-  AND ( hits.transaction.transactionId IS NOT NULL ) )
+   )
   order by
   fullVisitorId,
   visitStartTime ASC,
@@ -194,7 +195,8 @@ tryCatch(
 
 attribution_query <- paste0(
   "SELECT
-  (case when transacion_id_final  is not null then 1 else 0 end) / max_interaction as linear_weight,
+  CASE WHEN transacion_id_final is not null and is_last_click = 'Y' then 1 else 0 end as last_click_weight,
+  (case when transacion_id_final is not null then 1 else 0 end) / max_interaction as linear_weight,
   CASE WHEN weight = 0
   THEN 0
   ELSE order_b4_normalization / weight
