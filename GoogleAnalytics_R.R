@@ -3,26 +3,27 @@ library(future.apply)
 library(tidyverse)
 library(bigrquery)
 
-## setup multisession R for your parallel data fetches 
+## setup multisession R for your parallel data fetches -------------------------------------
 plan(multisession)
 
 # login as new_user = TRUE if switching accounts. Otherwise do not set new_user = true
 ga_auth()
 # ga_auth(new_user = TRUE)
 
-# get list of custom dimensions
+# get list of custom dimensions -------------------------------------
 customdimensions_list <- as.data.frame(ga_custom_vars_list(17015991, "UA-17015991-1", 
                                                            type = c("customDimensions")))
 
 Sys.setenv(GA_AUTH_FILE = "C:/Users/User/Documents/.httr-oauth")
 # need alternative for mac
 
+# get account list -------------------------------------
 account_list <- ga_account_list()
 
-## the ViewIds to fetch all at once
+## the ViewIds to fetch all at once -------------------------------------
 gaids <- c(account_list[2122,'viewId'], account_list[2125,'viewId'], account_list[2128,'viewId'])
 
-# selecting segments
+# selecting segments -------------------------------------
 my_segments <- ga_segment_list()
 segs <- my_segments$items
 
@@ -39,7 +40,7 @@ my_fetch <- function(x) {
                    max = -1)
 }
 
-## makes 3 API calls at once
+## makes 3 API calls at once -------------------------------------
 all_data <- future_lapply(gaids, my_fetch)
 df1 <- data.frame(all_data[1])
 df1 <- df1 %>% mutate(viewID = account_list[2122,'viewName'])
@@ -49,7 +50,7 @@ df3 <- data.frame(all_data[3])
 df3 <- df3 %>% mutate(viewID = account_list[2128,'viewName'])
 df_all <- rbind(df1,df2,df3)
 
-# query multiple segments
+# query multiple segments -------------------------------------
 segment_for_newusers <- "gaid::-2"
 seg_newusers <- segment_ga4("new Users", segment_id = segment_for_newusers)
 segment_for_returnusers <- "gaid::-3"
@@ -2120,4 +2121,36 @@ old_orb <- df_ORB_afterpos %>%
   #filter(POS == 'Australia') %>% 
   group_by(POS, device_category) %>% 
   summarise(Homepage = sum(Homepage))
+
+
+# Management API -------------------------------------
+accountlist_rownumber <- 1723
+mgmt_viewid <- account_list[accountlist_rownumber,'viewId']
+
+# Management API (adwords) -------------------------------------
+
+adwords_listing <- ga_adwords_list(account_list[accountlist_rownumber,'accountId'],
+                account_list[accountlist_rownumber,'webPropertyId'])
+adwords_listing <- as.data.frame(adwords_listing$items)
+
+ga_adwords(account_list[accountlist_rownumber,'accountId'],
+           account_list[accountlist_rownumber,'webPropertyId'])
+
+
+# Management API (custom data source) -------------------------------------
+custom_datasources <- ga_custom_datasource(account_list[accountlist_rownumber,'accountId'],
+                     account_list[accountlist_rownumber,'webPropertyId'])
+
+
+# Management API (Experiments) -------------------------------------
+experiments <- ga_experiment_list(account_list[accountlist_rownumber,'accountId'],
+              account_list[accountlist_rownumber,'webPropertyId'],
+              account_list[accountlist_rownumber,'viewId'])
+experiments <- as.data.frame(experiments$items)
+
+# Management API (filters) -------------------------------------
+filter_list <- ga_filter_view_list(account_list[accountlist_rownumber,'accountId'],
+                    account_list[accountlist_rownumber,'webPropertyId'],
+                    account_list[accountlist_rownumber,'viewId'])
+filter_list <- as.data.frame(filter_list$items)
 
