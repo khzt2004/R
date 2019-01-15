@@ -74,7 +74,137 @@ ggsave(paste0("Search_", unique(search_df_googleplot$`Event/Custom Dimension`),
               ".png"), p, width=5, height=3)
 
 
+################## Flight Search Heatmap ##################
+search_df_heatmap <- search_df %>%
+  filter(Duration == 'All Months' & Filter != 'None (Overall)') %>% 
+  select(-`Flight Search or Booking`, -`Col Name`, -Duration,
+         Event_CustomDimension_Value = `Event/Custom Dimension Value`) %>%
+  mutate_at(c("Correlation"), funs(replace(., is.na(.), 0))) %>% 
+  arrange(`Event/Custom Dimension`, Filter) %>% 
+  mutate(rownumber = row_number())
 
+search_df_heatmap_1 <- search_df_heatmap %>% 
+  filter(rownumber <= 224) %>% 
+  mutate(Correlation = round(Correlation, 2)) %>% 
+  mutate(Event_CustomDimension_Value = case_when(grepl('Clicked', 
+                                                       Event_CustomDimension_Value) ~ " ",
+         TRUE ~ Event_CustomDimension_Value)) %>% 
+  mutate(Event_CD = paste0(`Event/Custom Dimension`,
+                           ' ',
+                           Event_CustomDimension_Value))
+
+base_size <- 9
+
+search_heatmap_1 <- ggplot(search_df_heatmap_1, aes(Filter, Event_CD)) +
+    geom_tile(aes(fill = Correlation), 
+              colour = "white", alpha=0.75) +
+  geom_text(aes(Filter, Event_CD, label = Correlation), 
+            color = 'black', size = 3) +
+    scale_fill_gradient(low = "white", 
+                        high = "steelblue") +
+  theme_grey(base_size = base_size) +
+  labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position="none",
+        aspect.ratio = 0.9,
+        text=element_text(size=11, color='#757575', family="Roboto"),
+        axis.ticks=element_blank(), 
+        axis.text.x=element_text(size=base_size*0.9,
+                                 family="Roboto",
+                                 angle=330, 
+                                 hjust = 0, 
+                                 colour="#757575"))
+search_heatmap_1
+
+ggsave("search_heatmap_1.png", search_heatmap_1, 
+       width=13.66,
+       height=7.05,
+       limitsize = FALSE)
+
+
+################# Search Heatmap 2 ############
+
+search_df_heatmap_2 <- search_df_heatmap %>% 
+  filter(rownumber >= 225 & rownumber <= 520) %>% 
+  mutate(Correlation = round(Correlation, 2)) %>% 
+  mutate(Event_CustomDimension_Value = case_when(grepl('Clicked', 
+                                                       Event_CustomDimension_Value) ~ " ",
+                                                 TRUE ~ Event_CustomDimension_Value)) %>% 
+  mutate(Event_CD = paste0(`Event/Custom Dimension`,
+                           ' ',
+                           Event_CustomDimension_Value))
+
+base_size <- 9
+
+search_heatmap_2 <- ggplot(search_df_heatmap_2, aes(Filter, Event_CD)) +
+  geom_tile(aes(fill = Correlation), 
+            colour = "white", alpha=0.75) +
+  geom_text(aes(Filter, Event_CD, label = Correlation), 
+            color = 'black', size = 3) +
+  scale_fill_gradient(low = "white", 
+                      high = "steelblue") +
+  theme_grey(base_size = base_size) +
+  labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position="none",
+        text=element_text(size=11, color='#757575', family="Roboto"),
+        axis.ticks=element_blank(), 
+        aspect.ratio = 0.9,
+        axis.text.x=element_text(size=base_size*0.9,
+                                 family="Roboto",
+                                 angle=330, 
+                                 hjust = 0, 
+                                 colour="#757575"))
+search_heatmap_2
+
+ggsave("search_heatmap_2.png", search_heatmap_2, 
+       width=13.66,
+       height=7.05,
+       limitsize = FALSE)
+
+
+################## Search Heatmap 3 ###########
+
+search_df_heatmap_3 <- search_df_heatmap %>% 
+  filter(rownumber >= 521 & rownumber <= 728) %>% 
+  mutate(Correlation = round(Correlation, 2)) %>% 
+  mutate(Event_CustomDimension_Value = case_when(grepl('Clicked', 
+                                                       Event_CustomDimension_Value) ~ " ",
+                                                 TRUE ~ Event_CustomDimension_Value)) %>% 
+  mutate(Event_CD = paste0(`Event/Custom Dimension`,
+                           ' ',
+                           Event_CustomDimension_Value))
+
+base_size <- 9
+
+search_heatmap_3 <- ggplot(search_df_heatmap_3, aes(Filter, Event_CD)) +
+  geom_tile(aes(fill = Correlation), 
+            colour = "white", alpha=0.75) +
+  geom_text(aes(Filter, Event_CD, label = Correlation), 
+            color = 'black', size = 3) +
+  scale_fill_gradient(low = "white", 
+                      high = "steelblue") +
+  theme_grey(base_size = base_size) +
+  labs(x = "", y = "") +
+  scale_x_discrete(expand = c(0, 0)) +
+  scale_y_discrete(expand = c(0, 0)) +
+  theme(legend.position="none",
+        text=element_text(size=11, color='#757575', family="Roboto"),
+        axis.ticks=element_blank(), 
+        aspect.ratio = 0.9,
+        axis.text.x=element_text(size=base_size*0.9,
+                                 family="Roboto",
+                                 angle=330, 
+                                 hjust = 0, 
+                                 colour="#757575"))
+search_heatmap_3
+
+ggsave("search_heatmap_3.png", search_heatmap_3, 
+       width=13.66,
+       height=7.05,
+       limitsize = FALSE)
 
 ################## Book dataset ###############
 
