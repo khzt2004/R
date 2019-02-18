@@ -1,0 +1,110 @@
+---
+title: "Causal Impact in R with Advertising Data"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    toc_collapsed: true
+  pdf_document:
+      toc: true
+      number_sections: true
+  theme: lumen
+---
+
+# Introduction
+
+This R Markdown document serves as a guide to introduce users to show a POC for LTV
+
+# Required packages
+```{r}
+
+library(tidyverse)
+library(BTYD)
+library(bigrquery)
+```
+
+```{r}
+start_date = '2019-01-01'
+end_date = '2019-02-01'
+cohort_end_date = '2019-01-30'
+end_of_cal_period = '2019-02-10'
+
+project <- "zsgp-ga-bigq"
+targets_dataset <- "94892991"
+
+get_target_query <- paste0(
+   "SELECT
+  *
+FROM
+  (
+  SELECT
+    date,
+    fullVisitorId as cust,
+    totals.transactionRevenue/1000000 as sales,
+    totals.transactions
+     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, "'))
+    AND FORMAT_DATE('%Y%m%d', DATE('", end_date, "'))
+  and
+    totals.transactions IS NOT NULL
+    ) a
+JOIN
+  (
+  SELECT
+    fullVisitorId
+  FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, "'))
+    AND FORMAT_DATE('%Y%m%d', DATE('", cohort_end_date, "'))
+  and
+    totals.newVisits IS NOT NULL
+  #  AND RAND() < 1/50
+  GROUP BY
+    1
+    ) b
+ON
+  a.cust=b.fullVisitorId
+ORDER BY
+  date"
+  )
+
+target_data <-
+  bq_table_download(bq_project_query(project, get_target_query))
+
+library(fst)
+write.fst(target_data, "zalora_sg_btyd.fst")
+elog <- read.fst("zalora_sg_btyd.fst")
+
+```
+
+## Build a BTYD model
+
+You can also embed plots, for example:
+
+```{r}
+elog <- elog %>% 
+  mutate_at(vars(sales), funs(replace(., is.na(.), 0)))
+
+elog <- data.frame(cust = elog$cust, date = elog$date, sales = elog$sales)
+#elog$sales <- elog$sales / 10^6
+
+# format dates
+elog$date <- as.Date(elog$date, "%Y%m%d")
+
+# set key dates
+end.of.cal.period <- as.Date(end_of_cal_period)
+T.end <- max(elog$date)
+T.star <- as.numeric(T.end - end.of.cal.period)
+T.tot <- as.numeric(max(elog$date) - min(elog$date))
+
+dataset <- dc.ElogToCbsCbt(elog, per="day", 
+  T.cal=end.of.cal.period)
+
+# estimate model
+cal.cbs <- dataset[["cal"]][["cbs"]]
+params <- pnbd.EstimateParameters(cal.cbs)
+
+print(params)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
