@@ -11,6 +11,10 @@ output:
       number_sections: true
   theme: lumen
 ---
+# Things to do
+Define the end of calibration period date properly
+
+
 
 # Introduction
 
@@ -25,10 +29,10 @@ library(bigrquery)
 ```
 
 ```{r}
-start_date = '2019-01-01'
-end_date = '2019-02-01'
-cohort_end_date = '2019-01-30'
-end_of_cal_period = '2019-02-10'
+start_date = '2018-12-01'
+end_date = '2019-02-10'
+cohort_end_date = '2018-12-30'
+end_of_cal_period = '2019-01-10'
 
 project <- "zsgp-ga-bigq"
 targets_dataset <- "94892991"
@@ -72,8 +76,8 @@ target_data <-
   bq_table_download(bq_project_query(project, get_target_query))
 
 library(fst)
-write.fst(target_data, "zalora_sg_btyd.fst")
-elog <- read.fst("zalora_sg_btyd.fst")
+write.fst(target_data, "zlra_sg_btyd.fst")
+elog <- read.fst("zlra_sg_btyd.fst")
 
 ```
 
@@ -83,7 +87,8 @@ You can also embed plots, for example:
 
 ```{r}
 elog <- elog %>% 
-  mutate_at(vars(sales), funs(replace(., is.na(.), 0)))
+  mutate_at(vars(sales), funs(replace(., is.na(.), 0))) %>% 
+  filter(sales > 0)
 
 elog <- data.frame(cust = elog$cust, date = elog$date, sales = elog$sales)
 #elog$sales <- elog$sales / 10^6
@@ -101,10 +106,45 @@ dataset <- dc.ElogToCbsCbt(elog, per="day",
   T.cal=end.of.cal.period)
 
 # estimate model
+# https://stackoverflow.com/questions/26280683/error-btyd-pnbd-estimateparameters-l-bfgs-b-needs-finite-values-of-fn
 cal.cbs <- dataset[["cal"]][["cbs"]]
 params <- pnbd.EstimateParameters(cal.cbs)
+# params <- bgnbd.EstimateParameters(cal.cbs)
 
 print(params)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+mape <- function(actual, forecasted) {
+    n <- length(actual)
+    (1/n) * sum(abs((actual - forecasted) / actual))
+}
+
+# calculate incremental and cumulative vectors
+T.cal <- cal.cbs[,3]
+actual.inc.tracking.data <- cbind(dataset[['cal']][['cbt']], 
+  dataset[['holdout']][['cbt']])
+actual.inc.tracking.data <- apply(actual.inc.tracking.data, 2, sum)
+actual.cum.tracking.data <- cumsum(actual.inc.tracking.data)
+expected.cum.trans <- pnbd.ExpectedCumulativeTransactions(params, T.cal, T.tot, length(actual.cum.tracking.data))
+
+# find end of calibration date
+end.of.cal.day <- as.numeric(end.of.cal.period - min(elog$date))
+
+total.mape <- mape(actual.cum.tracking.data, expected.cum.trans)
+in.sample.mape <- mape(actual.cum.tracking.data[1:end.of.cal.day], expected.cum.trans[1:end.of.cal.day])
+out.of.sample.mape <- mape(actual.cum.tracking.data[end.of.cal.day:T.tot], expected.cum.trans[end.of.cal.day:T.tot])
+mape.outputs <- data.frame("MAPE"=c(in.sample.mape, out.of.sample.mape, total.mape))
+row.names(mape.outputs) <- c("In sample", "Out of sample", "Total")
+print(mape.outputs)
+
+```
+
+
+# Analyse the model
+
+```{r}
+print(round(pnbd.Expectation(params, t=365), digits=1))
+pnbd.PlotFrequencyInCalibration(params, cal.cbs, 7)
+```
+
