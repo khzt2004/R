@@ -13,7 +13,8 @@ output:
 ---
 # Things to do
 Define the end of calibration period date properly
-
+Try using ZUID instead of fullvisitorid
+Try using a longer time period to account for seasonality
 
 
 # Introduction
