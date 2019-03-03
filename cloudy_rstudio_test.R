@@ -1,3 +1,4 @@
+# https://code.markedmondson.me/launch-rstudio-server-google-cloud-in-two-lines-r/
 # steps:
 # go to google cloud platform, create a project or login to your project
 # go to IAM & Admin -> Service Accounts
