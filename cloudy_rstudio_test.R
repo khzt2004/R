@@ -9,6 +9,8 @@
 # go to "APIs and Services" in the left bar menu and navigate to "Library"
 # enable apis such as BigQuery, Google Analytics, Compute Engine, Kubernetes, etc
 # Navigate back to IAM & Admin -> Service Accounts
+# create an .Renviron file with details for GCE_AUTH_FILE, GCE_DEFAULT_PROJECT_ID, GCE_DEFAULT_ZONE
+# store the Renviron file in working directory, with the json file for service account
 
 setwd("C:/Users/User/Documents/cloudy-rstudio")
 readRenviron("C:/Users/User/Documents/cloudy-rstudio/.Renviron")
