@@ -84,7 +84,7 @@ elog <- read.fst("zlra_sg_btyd.fst")
 
 ## Build a BTYD model
 
-You can also embed plots, for example:
+After transforming data, we build a customer-by-sufficient-statistic matrix for the Pareto-NBD model
 
 ```{r}
 elog <- elog %>% 
@@ -148,4 +148,117 @@ print(mape.outputs)
 print(round(pnbd.Expectation(params, t=365), digits=1))
 pnbd.PlotFrequencyInCalibration(params, cal.cbs, 7)
 ```
+
+# 
+
+```{r}
+# cumulative tracking
+cum.tracking <- pnbd.PlotTrackingCum(params, T.cal, T.tot,
+  actual.cum.tracking.data, xlab="Day")
+```
+
+```{r}
+# inc tracking
+inc.tracking <- pnbd.PlotTrackingInc(params, T.cal, T.tot, 
+  actual.inc.tracking.data, xlab="Day", title="Tracking Daily Transactions")
+```
+
+```{r}
+x.star <- dataset$holdout$cbs[,1]
+censor <- 7
+cond.expectation <- pnbd.PlotFreqVsConditionalExpectedFrequency(params,
+    T.star, cal.cbs, dataset$holdout$cbs[,1], censor)
+cond.expectation
+```
+
+
+```{r}
+heatmap.palive.data <- matrix(NA, nrow=10, ncol=200)
+heatmap.cet.data <- matrix(NA, nrow=10, ncol=200)
+for(i in 1:10) {
+    heatmap.cet.data[i,] <- pnbd.ConditionalExpectedTransactions(params, T.star=365, x=i, t.x=1:200, T.cal=200)
+    heatmap.palive.data[i,] <- pnbd.PAlive(params, x=i, t.x=1:200, T.cal=200)
+}
+image(heatmap.palive.data, axes=FALSE, xlab="Number of Transactions", ylab="Days since last transaction", main="P(Alive) by Recency and Frequency")
+axis(1, at=seq(0,1,.1), labels=0:10)
+axis(2, at=seq(0,1,.1), labels=seq(200,0,-20))
+
+image(heatmap.cet.data, axes=FALSE, xlab="Number of Transactions", ylab="Days since last transaction", main="Conditional Expected Transactions by Recency and Frequency")
+axis(1, at=seq(0,1,.1), labels=0:10)
+axis(2, at=seq(0,1,.1), labels=seq(200,0,-20))
+```
+
+# Forecasting Spend
+```{r}
+#cal.cbt <- dc.CreateSpendCBT(elog, is.avg.spend = FALSE)
+cal.cbt <- dc.ElogToCbsCbt(elog, per="day", T.cal=end.of.cal.period, cohort.birth.per=as.Date(cohort_end_date), statistic="total.spend")
+cal.cbs <- cal.cbt$cal$cbs
+cal.cbt <- cal.cbt$cal$cbt
+calculateAvgSpend <- function(cbt.row) {
+    purchaseCols = which(cbt.row != 0)
+    sum(cbt.row[purchaseCols]) / length(purchaseCols)
+}
+
+m.x <- apply(cal.cbt, 1, calculateAvgSpend)
+m.x[which(is.na(m.x))] <- 0
+spendParams <- spend.EstimateParameters(m.x, cal.cbs[,1])
+print(spendParams)
+```
+
+```{r}
+expected.spend <- spend.plot.average.transaction.value(spendParams, m.x, cal.cbs[,1], title = "Actual vs. Expected Avg Transaction Value Across Customers")
+```
+
+
+```{r}
+mape(m.x[which(m.x > 0)], expected.spend)
+```
+
+# Compute Model Outputs
+Once confident in model fit, the model must be rerun using all of the data. In the previous section, the data from the holdout period was used to assess model fit. In order to generate a true forecast, you must run the model on all of the data. Running the model may take a few minutes.
+
+```{r}
+end.of.cal.period <- as.Date(end_date)
+
+dataset <- dc.ElogToCbsCbt(elog, per="day", 
+  T.cal=end.of.cal.period)
+
+# estimate model
+cal.cbs <- dataset[["cal"]][["cbs"]]
+params <- pnbd.EstimateParameters(cal.cbs)
+
+print(params)
+
+```
+
+# Find the Probability that a customer is still alive
+
+In addition to forecasting how many times a new customer will purchase in the next year, you can use the model to forecast how many times each existing customer will purchase in the next year, conditional on their past behavior. You can also compute the probability that they are still alive (p_Alive). Both the expected transactions and probability of being alive for each customer are computed below, conditional on their observed behavior.
+
+```{r}
+x <- cal.cbs[, "x"]
+t.x <- cal.cbs[, "t.x"]
+T.cal <- cal.cbs[, "T.cal"]
+d <- .15 # discount rate to be divided by 365, as we are running the model on daily data
+discounted_expected_transactions <- pnbd.DERT(params, x, t.x, T.cal, d / 365)
+p_Alive <- pnbd.PAlive(params, x, t.x, T.cal)
+output <- data.frame(visitorId=dataset$cust.data$cust, discounted_expected_transactions=discounted_expected_transactions, p_Alive=p_Alive)
+head(output)
+```
+
+Finally, compute the expected spend per transaction and combine this with the expected transactions for a projected future revenue number.
+
+```{r}
+expected_spend <- spend.expected.value(spendParams, m.x, cal.cbs[,1])
+output$expected_spend <- expected_spend
+output$projected_future_revenue <- output$expected_spend * output$discounted_expected_transactions
+output[1:20,]
+```
+
+The output table above can now be imported into BigQuery and analyzed alongside other Google Analytics data.
+
+# Analyzing the data in BigQuery
+Continue from here 
+https://github.com/googleanalytics/bigquery-export-ipython-notebooks/blob/master/notebooks/customer-base-analysis.ipynb
+
 
