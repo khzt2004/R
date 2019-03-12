@@ -2154,3 +2154,37 @@ filter_list <- ga_filter_view_list(account_list[accountlist_rownumber,'accountId
                     account_list[accountlist_rownumber,'viewId'])
 filter_list <- as.data.frame(filter_list$items)
 
+
+# Chi square test ----------------------------------------
+
+chi_sq_testfunc <- function(chisq_viewid) {
+  google_analytics(chisq_viewid, 
+                   date_range = c("2019-01-01","2019-02-01"), 
+                   metrics = c("sessions"), 
+                   dimensions = c("channelGrouping", "deviceCategory"),
+                   segments = c(seg_allUsers),
+                   useResourceQuotas = TRUE,
+                   # anti_sample = TRUE,
+                   max = -1)
+}
+
+chi_sq_df <- chi_sq_testfunc(54454548)
+chi_sq_df_clean <- chi_sq_df %>% 
+  select(-segment) %>% 
+  spread(deviceCategory, sessions) %>% 
+  mutate_at(vars(-channelGrouping), funs(replace(., is.na(.), 0))) %>% 
+  mutate_at(vars(-channelGrouping), as.numeric) %>% 
+  filter(desktop > 10 & mobile > 10 & tablet > 10)
+
+# The [,-1] just gets rid of the row names -- the 1, 2, 3 column
+# in the above.
+chisq_test_results <- chisq.test(chi_sq_df_clean[,-1])
+
+result_interpretation <- ifelse(chisq_test_results$p.value < 0.05, "The p-value is smaller than 0.05 
+                                                so we can reject the hypothesis that there is no relationship 
+                                                between column 1 and column 2",
+       "The p-value is larger than 0.05 
+                                                so we canot reject the hypothesis that there is no relationship 
+                                                between column 1 and column 2")
+chisq.test(chi_sq_df_clean[,-1])
+result_interpretation
