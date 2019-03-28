@@ -1,9 +1,10 @@
 ---
 title: "Analytics Checkup"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
+    latex_engine: xelatex
 ---
 # to add: pages per session, % of returning users, sales by channelgrouping
 
@@ -158,7 +159,7 @@ skim_to_wide(basics[2:ncol(basics)]) %>%
 ```
 
 
-Checking Channel Grouping metrics to see how it looks.
+Checking Channel Grouping metrics by session to see how it looks.
 
 ```{r}
 channel_list <- unique(channel_basics$channelGrouping)
