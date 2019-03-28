@@ -1,10 +1,10 @@
 ---
 title: "Analytics Checkup"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
     latex_engine: xelatex
+  pdf_document: default
 ---
 # to add: pages per session, % of returning users, sales by channelgrouping
 
@@ -302,14 +302,14 @@ skim_to_wide(conversion_device_basics_spread[2:ncol(conversion_device_basics_spr
 
 ## Custom Dimensions and Metrics
 
-`r customer` has configured `r ifelse(is.null(nrow(cmets$items)),0,nrow(cmets$items))` custom metrics and
-`r ifelse(is.null(nrow(cdims$items)),0,nrow(cdims$items))` dimensions.
+`r customer` has configured `r ifelse(is.null(nrow(cmets)),0,nrow(cmets))` custom metrics and
+`r ifelse(is.null(nrow(cdims)),0,nrow(cdims))` dimensions.
 
 ```{r} 
 show_custom_vars <- function(x) {
-  if (!is.null(nrow(x$items))) {
-    type <- gsub('.*#custom', '', x$kind )
-    df <- x$items[,c("index", "name", "scope", "active")] 
+  if (!is.null(nrow(x))) {
+    type <- unique(gsub('[0-9]', '', gsub('ga:', '', x$id )))
+    df <- x[,c("index", "name", "scope", "active")] 
     
     # display table + add styling
     kable(df %>% 
@@ -319,6 +319,7 @@ show_custom_vars <- function(x) {
       kable_styling(bootstrap_options = c("striped", "condensed", full_width=FALSE))
   }
 }
+
 show_custom_vars(cdims)
 show_custom_vars(cmets)
 ```
@@ -375,11 +376,11 @@ get_custom_vars <- function(x) {
   dim_table <- data.frame()
   res_table <- data.frame()
       
-  if (!is.null(nrow(x$items))) {
-    type <- gsub('.*#custom', '', x$kind )
-    df <- x$items[,c("index", "name", "scope", "active")] 
+  if (!is.null(nrow(x$id))) {
+    type <- unique(gsub('[0-9]', '', gsub('ga:', '', x$id )))
+    df <- x[,c("index", "name", "scope", "active")] 
     
-    if (type == "Dimensions") {
+    if (grepl('dimension', x$id)) {
       # populate tables
       for (d in 1:nrow(df)) {
         c <- call_ga(index  = df[d,"index"],
@@ -420,10 +421,10 @@ kable(fetched_dims[["summary_df"]],
 A long table, with the top 10 values of each dimension and the number of users per said value.
 
 ```{r}
-df <- fetched_dims[["content_df"]] %>% select(index, name, dimension, users) %>% filter(!is.na(users))
-kable(df,
-      escape = FALSE,
-      caption = glue("Custom Dim summary for {customer}")) %>% 
-  row_spec(which(df$index %% 2 == 0), background = "#eeeeee") %>% 
-  kable_styling(bootstrap_options = c("condensed"))
+#df <- fetched_dims[["content_df"]] %>% select(index, name, dimension, users) %>% #filter(!is.na(users))
+#kable(df,
+#      escape = FALSE,
+#      caption = glue("Custom Dim summary for {customer}")) %>% 
+#  row_spec(which(df$index %% 2 == 0), background = "#eeeeee") %>% 
+#  kable_styling(bootstrap_options = c("condensed"))
 ```
