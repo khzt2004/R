@@ -68,6 +68,33 @@ channel_basics_spread <- channel_basics %>%
   mutate(channelGrouping = gsub(")", "", channelGrouping)) %>% 
   spread(channelGrouping, sessions)
 
+
+sourcemedium_metrics <- c("sessions")
+   
+sourcemedium_basics <-  google_analytics(viewid, 
+                                    date_range = date_range,
+                                    dimensions = c("date", 
+                                                   "sourceMedium"),
+                                    metrics = sourcemedium_metrics,
+                                    max = -1)
+
+sourcemedium_summary <- sourcemedium_basics %>% 
+  group_by(sourceMedium) %>% 
+  summarise(sessions = sum(sessions)) %>% 
+  top_n(10, sessions) %>% 
+  arrange(desc(sessions))
+
+
+sourcemedium_basics_spread <- sourcemedium_basics %>% 
+  filter(sourceMedium %in% c(sourcemedium_summary$sourceMedium)) %>% 
+  mutate(sourceMedium = gsub("\\/", "", sourceMedium)) %>%
+  mutate(sourceMedium = gsub(" ", "_", sourceMedium)) %>% 
+  mutate(sourceMedium = gsub("__", "_", sourceMedium)) %>% 
+  mutate(sourceMedium = gsub("\\(", "", sourceMedium)) %>% 
+  mutate(sourceMedium = gsub(")", "", sourceMedium)) %>%
+  mutate(sourceMedium = gsub("-", "", sourceMedium)) %>% 
+  spread(sourceMedium, sessions)
+
 conversion_metrics <- c("transactions", "sessions")
 
 conversion_basics <-  google_analytics(viewid, 
@@ -191,7 +218,42 @@ skim_to_wide(channel_basics_spread[2:ncol(channel_basics_spread)]) %>%
   select(variable, mean, sd, p0, p50, p100, hist)
 ```
 
+Checking Source Medium metrics by session to see how it looks.
 
+```{r}
+sourcemedium_list <- unique(sourcemedium_summary$sourceMedium)
+sourcemedium_list <- gsub("\\/", "", sourcemedium_list)
+sourcemedium_list <- gsub(" ", "_", sourcemedium_list)
+sourcemedium_list <- gsub("__", "_", sourcemedium_list)
+sourcemedium_list <- gsub("\\(", "", sourcemedium_list)
+sourcemedium_list <- gsub(")", "", sourcemedium_list)
+sourcemedium_list <- gsub("-", "", sourcemedium_list)
+
+plot_metric_by_day <- function(metric) {
+  ggplot(sourcemedium_basics_spread, aes(x = date, color = "value")) +
+    geom_line(aes_string(y = metric)) +
+    theme_minimal() + xlab("") + ylab("value") +
+    ggtitle(glue("28 day trend of {metric}")) +
+    theme(plot.title = element_text(size = 10)) +
+    scale_color_viridis(discrete = TRUE) + theme(legend.position = "none")
+    
+}
+
+plotlist <- list()
+for (m in sourcemedium_list) {
+  plotlist[[m]] <- plot_metric_by_day(m)
+}
+
+# arrange plots in a grid
+do.call("grid.arrange", c(plotlist, ncol=floor(sqrt(length(plotlist)))))
+```
+
+Showing a summary and percentiles:
+
+```{r}
+skim_to_wide(sourcemedium_basics_spread[2:ncol(sourcemedium_basics_spread)]) %>%
+  select(variable, mean, sd, p0, p50, p100, hist)
+```
 
 Checking trends for sales metrics for each  product category
 
