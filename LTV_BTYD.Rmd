@@ -38,47 +38,64 @@ end_of_cal_period = '2019-01-10'
 project <- "zsgp-ga-bigq"
 targets_dataset <- "94892991"
 
-get_target_query <- paste0(
-   "SELECT
-  *
-FROM
-  (
-  SELECT
-    date,
-    fullVisitorId as cust,
-    totals.transactionRevenue/1000000 as sales,
-    totals.transactions
-     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
-    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, "'))
-    AND FORMAT_DATE('%Y%m%d', DATE('", end_date, "'))
-  and
-    totals.transactions IS NOT NULL
-    ) a
-JOIN
-  (
-  SELECT
-    fullVisitorId
-  FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
-    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, "'))
-    AND FORMAT_DATE('%Y%m%d', DATE('", cohort_end_date, "'))
-  and
-    totals.newVisits IS NOT NULL
-  #  AND RAND() < 1/50
-  GROUP BY
-    1
-    ) b
-ON
-  a.cust=b.fullVisitorId
-ORDER BY
-  date"
-  )
+#get_target_query <- paste0(
+#   "SELECT
+#  *
+#FROM
+#  (
+#  SELECT
+#    date,
+#    fullVisitorId as cust,
+#    totals.transactionRevenue/1000000 as sales,
+#    totals.transactions
+#     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+#    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, #"'))
+#    AND FORMAT_DATE('%Y%m%d', DATE('", end_date, "'))
+#  and
+#    totals.transactions IS NOT NULL
+#    ) a
+#JOIN
+#  (
+#  SELECT
+#    fullVisitorId
+#  FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+#    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, #"'))
+#    AND FORMAT_DATE('%Y%m%d', DATE('", cohort_end_date, "'))
+#  and
+#    totals.newVisits IS NOT NULL
+#  #  AND RAND() < 1/50
+#  GROUP BY
+#    1
+#    ) b
+#ON
+#  a.cust=b.fullVisitorId
+#ORDER BY
+#  date"
+#  )
 
-target_data <-
-  bq_table_download(bq_project_query(project, get_target_query))
+# new query (used to create csv export from ZSG BQ)
+#SELECT
+#    date,
+#    fullVisitorId as cust,
+#   sum( totals.transactionRevenue/1000000) as sales,
+#    sum(totals.transactions) as transactions
+#     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+#    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-12-01'))
+#    AND FORMAT_DATE('%Y%m%d', DATE('2019-02-10'))
+#  and
+#    totals.transactions IS NOT NULL
+#    group by 1,2
+
+#target_data <-
+#  bq_table_download(bq_project_query(project, get_target_query))
+
+zsg <- read_csv("zsg_bq.csv", col_types = cols(date = col_character()))
 
 library(fst)
-write.fst(target_data, "zlra_sg_btyd.fst")
-elog <- read.fst("zlra_sg_btyd.fst")
+# write.fst(target_data, "zlra_sg_btyd.fst")
+# write.fst(zsg, "zsg_btyd.fst")
+# elog <- read.fst("zlra_sg_btyd.fst")
+elog <- read.fst("zsg_btyd.fst")
 
 ```
 
