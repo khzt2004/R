@@ -26,78 +26,92 @@ This R Markdown document serves as a guide to introduce users to show a POC for 
 
 library(tidyverse)
 library(BTYD)
+library(skimr)
 library(bigrquery)
+library(DataExplorer)
 ```
+Find the LTV of the cohort of new visitors between 2018-11-01 and 2018-12-30, for a period between 2018-11-01 and 2019-02-28
+
+The calibration period will be 2 months, ending on 2019-01-01.
 
 ```{r}
-start_date = '2018-12-01'
-end_date = '2019-02-10'
+start_date = '2018-11-01'
+end_date = '2019-02-28'
 cohort_end_date = '2018-12-30'
-end_of_cal_period = '2019-01-10'
+end_of_cal_period = '2019-01-01'
 
 project <- "zsgp-ga-bigq"
 targets_dataset <- "94892991"
 
-#get_target_query <- paste0(
-#   "SELECT
-#  *
-#FROM
-#  (
-#  SELECT
-#    date,
-#    fullVisitorId as cust,
-#    totals.transactionRevenue/1000000 as sales,
-#    totals.transactions
-#     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
-#    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, #"'))
-#    AND FORMAT_DATE('%Y%m%d', DATE('", end_date, "'))
-#  and
-#    totals.transactions IS NOT NULL
-#    ) a
-#JOIN
-#  (
-#  SELECT
-#    fullVisitorId
-#  FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
-#    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, #"'))
-#    AND FORMAT_DATE('%Y%m%d', DATE('", cohort_end_date, "'))
-#  and
-#    totals.newVisits IS NOT NULL
-#  #  AND RAND() < 1/50
-#  GROUP BY
-#    1
-#    ) b
-#ON
-#  a.cust=b.fullVisitorId
-#ORDER BY
-#  date"
-#  )
+get_target_query <- paste0(
+   "SELECT
+  *
+FROM
+  (
+  SELECT
+    date,
+    fullVisitorId as cust,
+    totals.transactionRevenue/1000000 as sales,
+    totals.transactions
+     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, "'))
+    AND FORMAT_DATE('%Y%m%d', DATE('", end_date, "'))
+  and
+    totals.transactions IS NOT NULL
+    ) a
+JOIN
+  (
+  SELECT
+    fullVisitorId
+  FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('", start_date, "'))
+    AND FORMAT_DATE('%Y%m%d', DATE('", cohort_end_date, "'))
+  and
+    totals.newVisits IS NOT NULL
+  #  AND RAND() < 1/50
+  GROUP BY
+    1
+    ) b
+ON
+  a.cust=b.fullVisitorId
+ORDER BY
+  date"
+  )
 
 # new query (used to create csv export from ZSG BQ)
-#SELECT
-#    date,
-#    fullVisitorId as cust,
-#   sum( totals.transactionRevenue/1000000) as sales,
-#    sum(totals.transactions) as transactions
-#     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
-#    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-12-01'))
-#    AND FORMAT_DATE('%Y%m%d', DATE('2019-02-10'))
-#  and
-#    totals.transactions IS NOT NULL
-#    group by 1,2
+get_target_query <- paste0(
+"SELECT
+    date,
+    fullVisitorId as cust,
+   sum( totals.transactionRevenue/1000000) as sales,
+    sum(totals.transactions) as transactions
+     FROM `zsgp-ga-bigq.94892991.ga_sessions_*`
+    where _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE('2018-10-01'))
+    AND FORMAT_DATE('%Y%m%d', DATE('2018-12-31'))
+  and
+    totals.transactions IS NOT NULL
+    group by 1,2"
+)
 
-#target_data <-
-#  bq_table_download(bq_project_query(project, get_target_query))
+target_data <-
+  bq_table_download(bq_project_query(project, get_target_query))
 
-zsg <- read_csv("zsg_bq.csv", col_types = cols(date = col_character()))
+#zsg <- read_csv("zsg_bq.csv", col_types = cols(date = #col_character()))
 
 library(fst)
-# write.fst(target_data, "zlra_sg_btyd.fst")
-# write.fst(zsg, "zsg_btyd.fst")
-# elog <- read.fst("zlra_sg_btyd.fst")
+# write.fst(target_data, "zsg_btyd.fst")
 elog <- read.fst("zsg_btyd.fst")
 
 ```
+
+## Get descriptive stats on the dataset
+```{r}
+summary(elog)
+
+skim(elog)
+```
+
+
 
 ## Build a BTYD model
 
@@ -272,9 +286,46 @@ output$projected_future_revenue <- output$expected_spend * output$discounted_exp
 output[1:20,]
 ```
 
+
+# Explore the output dataset
+```{r}
+summary(output)
+skim(output)
+
+```
+
+
 The output table above can now be imported into BigQuery and analyzed alongside other Google Analytics data.
 
 # Analyzing the data in BigQuery
+
+Fill any missing values with zero
+```{r}
+output <- output %>% replace_na(list(0))
+
+
+```
+
+Create a table with the schema that was just created.
+Upload job code needs to be updated
+```{r}
+tablename <- "LTV_output"
+
+dataset <- bq_dataset("zsgp-ga-bigq", "94892991")
+bq_table_upload(bq_table(dataset, "output"), 
+                output,
+                fields = list(bq_field("visitorId","string"),
+                              bq_field("discounted_expected_transactions", "integer"),
+                              bq_field("p_Alive", "integer"),
+                              bq_field("expected_spend", "integer"),
+                              bq_field("projected_future_revenue", "integer"))
+)
+
+
+bq_table_delete(bq_mtcars)
+```
+
+
 Continue from here 
 https://github.com/googleanalytics/bigquery-export-ipython-notebooks/blob/master/notebooks/customer-base-analysis.ipynb
 
