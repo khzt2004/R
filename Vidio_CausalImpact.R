@@ -7,6 +7,7 @@ library(janitor)
 library(xts)
 library(tibbletime)
 library(padr)
+library(plotly)
 
 # ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
 ads <- read_excel("TV_Ads_MayJune.xlsx")
@@ -26,24 +27,26 @@ ads <- ads %>%
   summarise(sum_byhour = sum(!is.na(version), na.rm=TRUE),
          count_byhour = n()) %>% 
   ungroup() %>%
-  mutate(date_time = as.POSIXct(date_time)) %>% 
   pad("hour", by = "date_time") %>% 
   fill_by_value(sum_byhour, count_byhour, value = 0) 
   
   
-ggplot(ads, aes(x = as.Date(date_time), y = count)) + geom_line()
+ggplot(ads, aes(x = as.Date(date_time), y = sum_byhour)) + geom_line()
 
-df_ts <- xts(x = ads, order.by = ads$date_time)
 
-patroli <- ads %>% 
-  filter(program_name == "PATROLI") %>% 
-  group_by_all() %>% 
-  count(version)
+# explore data by hour - this will determine the intervention hour
+ads_hour <- ads %>%
+  group_by(hour = lubridate::hour(date_time2), program_name) %>% 
+  summarise(sum_byhour = sum(sum_byhour))
 
-ggplot(patroli, 
-       aes(x = as.Date(date_time), y = n)) +
+# ggplotly for interactive plot by hour
+ggplot(ads_hour, aes(x = hour, y = sum_byhour)) + 
   geom_line() +
-  scale_x_date(date_labels ="%Y-%m-%d", date_breaks ="1 day")
+  facet_wrap(vars(program_name), ncol = 3)
 
+p <- ggplotly(ggplot(ads_hour, aes(x = hour, y = sum_byhour)) + 
+                geom_line() +
+                facet_wrap(vars(program_name), ncol = 3))
 
+p
 
