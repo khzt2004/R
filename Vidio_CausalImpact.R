@@ -76,11 +76,33 @@ ga_auth()
 
 
 ### Feed in csv from unsampled report in GA ####
-sessions_df <- read_csv("Sessions by Date - Jan - Jun 2018.csv") %>% 
+### Next steps: get data broken down by device category ###
+
+sessions_h1 <- read_csv("Sessions by Date - Jan - Jun 2018.csv")
+
+sessions_h2 <- read_csv("Sessions by Date - Jul - Dec 2018.csv")
+
+sessions_h1_2019 <- read_csv("Sessions by Date - Jan - Jun 2019.csv")
+
+sessions_2018_2019 <- rbind(sessions_h1, 
+                            sessions_h2,
+                            sessions_h1_2019) %>% 
   clean_names()
 
+rm(sessions_h1, sessions_h2, sessions_h1_2019)
+
+GA_org_direct_sessions <- sessions_2018_2019 %>% 
+  filter(default_channel_grouping == 'Organic Search' |
+           default_channel_grouping == 'Direct') %>% 
+  mutate(date = ymd(date),
+         time = (paste(hour, minute, sep=" ")),
+         seconds = "00") %>% 
+  mutate(date_time =ymd_hms(paste(date, paste(hour, minute, seconds, sep=":")),  tz="Asia/Jakarta"))
 
 
+ggplot(GA_org_direct_sessions, aes(x = date_time, y = sessions)) + 
+  geom_line() +
+  facet_wrap(vars(default_channel_grouping), nrow = 2)
 
 
 
