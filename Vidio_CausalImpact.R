@@ -8,8 +8,10 @@ library(xts)
 library(tibbletime)
 library(padr)
 library(plotly)
+library(googleAnalyticsR)
+library(future.apply)
 
-# ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
+ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
 ads <- read_excel("TV_Ads_MayJune.xlsx")
 
 ### filter out time where hours greater than 24 first ###
@@ -25,12 +27,12 @@ ads <- ads %>%
   collapse_by("hourly", side="start", clean=TRUE) %>% 
   group_by_all() %>%
   summarise(sum_byhour = sum(!is.na(version), na.rm=TRUE),
-         count_byhour = n()) %>% 
+            count_byhour = n()) %>% 
   ungroup() %>%
   pad("hour", by = "date_time") %>% 
   fill_by_value(sum_byhour, count_byhour, value = 0) 
-  
-  
+
+
 ggplot(ads, aes(x = as.Date(date_time), y = sum_byhour)) + geom_line()
 
 
@@ -49,4 +51,40 @@ p <- ggplotly(ggplot(ads_hour, aes(x = hour, y = sum_byhour)) +
                 facet_wrap(vars(program_name), ncol = 3))
 
 p
+
+
+#### Get data from Google Analytics #####
+
+# login as new_user = TRUE if switching accounts. Otherwise do not set new_user = true
+ga_auth()
+# ga_auth(new_user = TRUE)
+
+
+# get account list -------------------------------------
+# account_list <- ga_account_list()
+# 
+# gaids <- c(account_list[604,'viewId'])
+# 
+# 
+# data <- google_analytics(gaids,
+#                    date_range = c("2018-01-01","2018-06-01"),
+#                    metrics = c("sessions"),
+#                    dimensions = c("date", "hour", "minute", "channelGrouping"),
+#                    # anti_sample = TRUE,
+#                    max = -1,
+#                    useResourceQuotas = TRUE)
+
+
+### Feed in csv from unsampled report in GA ####
+sessions_df <- read_csv("Sessions by Date - Jan - Jun 2018.csv") %>% 
+  clean_names()
+
+
+
+
+
+
+
+
+
 
