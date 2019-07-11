@@ -100,9 +100,15 @@ GA_org_direct_sessions <- sessions_2018_2019 %>%
   mutate(date_time =ymd_hms(paste(date, paste(hour, minute, seconds, sep=":")),  tz="Asia/Jakarta"))
 
 
-ggplot(GA_org_direct_sessions, aes(x = date_time, y = sessions)) + 
+# collapse the graph by week / month ie a higher dimension 
+GA_org_direct_sessions %>%
+  arrange(date_time) %>% 
+  as_tbl_time(index = date_time) %>% 
+  collapse_by("weekly") %>% 
+  ggplot(aes(x = date_time, y = sessions)) + 
   geom_line() +
   facet_wrap(vars(default_channel_grouping), nrow = 2)
+
 
 
 
