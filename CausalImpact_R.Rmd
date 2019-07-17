@@ -2,6 +2,7 @@
 title: "Causal Impact in R with Advertising Data"
 output:
   html_document:
+    keep_md: true
     toc: true
     toc_depth: 3
     toc_float: true
@@ -14,6 +15,8 @@ output:
 # Introduction
 
 This R Markdown document serves as a guide to introduce users to demonstrating impact of Ads in R with a real example used with Advertising data. 
+
+Consider: https://github.com/klarsen1/MarketMatching
 
 # Required packages
 ```{r}
