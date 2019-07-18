@@ -78,22 +78,76 @@ ga_auth()
 ### Feed in csv from unsampled report in GA ####
 ### Next steps: get data broken down by device category ###
 
-sessions_h1 <- read_csv("Sessions by Date - Jan - Jun 2018.csv")
+# sessions_h1 <- read_csv("Sessions by Date - Jan - Jun 2018.csv")
+# 
+# sessions_h2 <- read_csv("Sessions by Date - Jul - Dec 2018.csv")
+# 
+# sessions_h1_2019 <- read_csv("Sessions by Date - Jan - Jun 2019.csv")
+# 
+# sessions_2018_2019 <- rbind(sessions_h1, 
+#                             sessions_h2,
+#                             sessions_h1_2019) %>% 
+#   clean_names()
+# 
+# rm(sessions_h1, sessions_h2, sessions_h1_2019)
 
-sessions_h2 <- read_csv("Sessions by Date - Jul - Dec 2018.csv")
+### Feed in csv table export from BigQuery ###
+# sessions_2018_2019 <- read_csv("BQ_sessions_by_date_tablet.csv")
+# sessions_2018_2019 <- sessions_2018_2019 %>% 
+#   clean_names() %>% 
+#   replace_na(list(visits=0))
 
-sessions_h1_2019 <- read_csv("Sessions by Date - Jan - Jun 2019.csv")
 
-sessions_2018_2019 <- rbind(sessions_h1, 
-                            sessions_h2,
-                            sessions_h1_2019) %>% 
-  clean_names()
+### Feed in csv table export for Q2 2019 (tv_attribution_set_2019) from BigQuery ###
+sessions_q2_2019_p1 <- read_csv("tv_attribution000000000000.csv")
 
-rm(sessions_h1, sessions_h2, sessions_h1_2019)
+sessions_q2_2019_p2 <- read_csv("tv_attribution000000000001.csv")
 
-GA_org_direct_sessions <- sessions_2018_2019 %>% 
-  filter(default_channel_grouping == 'Organic Search' |
-           default_channel_grouping == 'Direct') %>% 
+sessions_q2_2019_p3 <- read_csv("tv_attribution000000000002.csv")
+
+sessions_q2_2019 <- rbind(sessions_q2_2019_p1,
+                            sessions_q2_2019_p2,
+                            sessions_q2_2019_p3)
+
+rm(sessions_q2_2019_p1, sessions_q2_2019_p2, sessions_q2_2019_p3)
+
+sessions_q2_2019 <- sessions_q2_2019 %>% 
+  clean_names() %>% 
+  replace_na(list(visits=0))
+
+
+### BQ query###
+# SELECT
+# date,
+# visitStartTime,
+# device.deviceCategory deviceCategory,
+# EXTRACT(HOUR
+#         FROM
+#         TIMESTAMP_SECONDS(visitStartTime) AT TIME ZONE 'Asia/Jakarta') hour,
+# EXTRACT(minute
+#         FROM
+#         TIMESTAMP_SECONDS(visitStartTime) AT TIME ZONE 'Asia/Jakarta') minute,
+# channelGrouping,
+# SUM(totals.visits) Visits
+# FROM
+# `analisis-production.88939979.ga_sessions_*`
+# WHERE
+# _TABLE_SUFFIX BETWEEN '20190701'
+# AND '20190710'
+# --         _TABLE_SUFFIX BETWEEN '20180101'
+# --         AND '20190630'
+# GROUP BY
+# date,
+# visitStartTime,
+# deviceCategory,
+# hour,
+# minute,
+# channelGrouping
+
+
+GA_org_direct_sessions <- sessions_q2_2019 %>% 
+  filter(channel_grouping == 'Organic Search' |
+           channel_grouping == 'Direct') %>% 
   mutate(date = ymd(date),
          time = (paste(hour, minute, sep=" ")),
          seconds = "00") %>% 
@@ -101,15 +155,34 @@ GA_org_direct_sessions <- sessions_2018_2019 %>%
 
 
 # collapse the graph by week / month ie a higher dimension 
-GA_org_direct_sessions %>%
+GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
-  collapse_by("weekly") %>% 
-  ggplot(aes(x = date_time, y = sessions)) + 
-  geom_line() +
-  facet_wrap(vars(default_channel_grouping), nrow = 2)
+  collapse_by("hourly") %>% 
+  group_by(date_time, device_category, channel_grouping) %>% 
+  summarise(visits = sum(visits))
+
+GA_org_direct_sessions_weekly %>% 
+  ggplot(aes(x = date_time, y = visits)) + 
+  geom_line(aes(colour = channel_grouping), size=1) +
+  facet_grid(device_category ~ channel_grouping) +
+  theme_bw()
 
 
+# Determine pre and post event time frames varying post period timepre.period 
+pre.period <- as.POSIXct(c("2019-04-01 00:00:00","2019-05-02 00:00:00"), tz = "Asia/Jakarta")
+post.period <- as.POSIXct(c("2019-05-03 00:00:00","2019-06-30 00:00:00"), tz = "Asia/Jakarta")
+
+GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>% 
+  group_by(date_time) %>% 
+  summarise(visits = sum(visits))
+
+GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
+                                     order.by = GA_org_direct_sessions_visits$date_time)
+                          
+                                     
+ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
+summary(ad_impact_model)
 
 
 
