@@ -10,6 +10,8 @@ library(padr)
 library(plotly)
 library(googleAnalyticsR)
 library(future.apply)
+library(scales)
+library(tidyquant)
 
 ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
 ads <- read_excel("TV_Ads_MayJune.xlsx")
@@ -36,12 +38,12 @@ ads <- ads %>%
 ggplot(ads, aes(x = as.Date(date_time), y = sum_byhour)) + geom_line()
 
 
-# explore data by hour - this will determine the intervention hour
+### explore data by hour - this will determine the intervention hour
 ads_hour <- ads %>%
   group_by(hour = lubridate::hour(date_time2), program_name) %>% 
   summarise(sum_byhour = sum(sum_byhour))
 
-# ggplotly for interactive plot by hour
+### ggplotly for interactive plot by hour
 ggplot(ads_hour, aes(x = hour, y = sum_byhour)) + 
   geom_line() +
   facet_wrap(vars(program_name), ncol = 3)
@@ -52,11 +54,54 @@ p <- ggplotly(ggplot(ads_hour, aes(x = hour, y = sum_byhour)) +
 
 p
 
+### explore data by time - this will determine the frequency of ads over time
+ads_timeseries <- ads %>%
+  replace_na(list(sum_byhour=0)) %>%
+  filter(!is.na(date_time2)) %>% 
+  arrange(date_time2) %>% 
+  as_tbl_time(index = date_time2) %>% 
+  collapse_by("hourly") %>% 
+  group_by(date_time2, program_name) %>% 
+  summarise(sum_byhour = sum(sum_byhour))
+
+ads_timeseries %>% 
+  ggplot(aes(x = date_time2, y = sum_byhour)) + 
+  geom_line(size=1) +
+  facet_wrap(vars(program_name)) +
+  theme_bw()
+
+### ggplotly for interactive plot by date
+ggplot(ads_timeseries, aes(x = date_time2, y = sum_byhour)) + 
+  geom_line() +
+  facet_wrap(vars(program_name))
+
+tp <- ggplotly(ggplot(ads_timeseries, aes(x = date_time2, y = sum_byhour)) + 
+                geom_line() +
+                 facet_wrap(vars(program_name)))
+
+tp
+
+### Investigate ShopeeLiga Match Ads
+ads_timeseries_shopeeliga <- ads_timeseries %>% 
+  filter(program_name == 'SHOPEELIGA1(BIGMATCH)' & date_time2 < '2019-05-19 00:00:00') %>% 
+  ungroup() %>% 
+  mutate(date_time2 = as.POSIXct(date_time2))
+
+ads_timeseries_shopeeliga %>% 
+  ggplot(aes(date_time2, sum_byhour, group=1)) + 
+  geom_col(colour="darkblue")
+
+plotly_liga <- ggplotly(ggplot(ads_timeseries_shopeeliga, 
+                               aes(x = date_time2, y = sum_byhour)) + 
+                          geom_col(colour="darkblue") )
+
+plotly_liga
+
 
 #### Get data from Google Analytics #####
 
 # login as new_user = TRUE if switching accounts. Otherwise do not set new_user = true
-ga_auth()
+# ga_auth()
 # ga_auth(new_user = TRUE)
 
 
@@ -170,10 +215,11 @@ GA_org_direct_sessions_weekly %>%
 
 
 # Determine pre and post event time frames varying post period timepre.period 
-pre.period <- as.POSIXct(c("2019-04-01 00:00:00","2019-05-02 00:00:00"), tz = "Asia/Jakarta")
-post.period <- as.POSIXct(c("2019-05-03 00:00:00","2019-06-30 00:00:00"), tz = "Asia/Jakarta")
+pre.period <- as.POSIXct(c("2019-04-01 00:00:00","2019-06-26 19:00:00"), tz = "Asia/Jakarta")
+post.period <- as.POSIXct(c("2019-06-26 21:30:00","2019-07-02 00:00:00"), tz = "Asia/Jakarta")
 
-GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>% 
+GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>%
+  filter(device_category == 'mobile' & channel_grouping == 'Organic Search') %>% 
   group_by(date_time) %>% 
   summarise(visits = sum(visits))
 
@@ -182,8 +228,11 @@ GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
                           
                                      
 ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
-summary(ad_impact_model)
 
+# to get the p-value: ad_impact_model$summary$p[1]
+
+summary(ad_impact_model)
+summary(ad_impact_model, "report")
 
 
 
