@@ -16,7 +16,7 @@ library(tidyquant)
 ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
 ads <- read_excel("TV_Ads_MayJune.xlsx")
 
-### filter out time where hours greater than 24 first ###
+##### filter out time where hours greater than 24 first #####
 ads <- ads %>% 
   filter(!grepl("^24:|^28:", Time)) %>% 
   mutate(Date = as.Date(Date),
@@ -38,7 +38,7 @@ ads <- ads %>%
 ggplot(ads, aes(x = as.Date(date_time), y = sum_byhour)) + geom_line()
 
 
-### explore data by hour - this will determine the intervention hour
+##### explore data by hour - this will determine the intervention hour #####
 ads_hour <- ads %>%
   group_by(hour = lubridate::hour(date_time2), program_name) %>% 
   summarise(sum_byhour = sum(sum_byhour))
@@ -54,7 +54,7 @@ p <- ggplotly(ggplot(ads_hour, aes(x = hour, y = sum_byhour)) +
 
 p
 
-### explore data by time - this will determine the frequency of ads over time
+##### explore data by time - this will determine the frequency of ads over time #####
 ads_timeseries <- ads %>%
   replace_na(list(sum_byhour=0)) %>%
   filter(!is.na(date_time2)) %>% 
@@ -70,7 +70,7 @@ ads_timeseries %>%
   facet_wrap(vars(program_name)) +
   theme_bw()
 
-### ggplotly for interactive plot by date
+##### ggplotly for interactive plot by date #####
 ggplot(ads_timeseries, aes(x = date_time2, y = sum_byhour)) + 
   geom_line() +
   facet_wrap(vars(program_name))
@@ -81,7 +81,7 @@ tp <- ggplotly(ggplot(ads_timeseries, aes(x = date_time2, y = sum_byhour)) +
 
 tp
 
-### Investigate ShopeeLiga Match Ads
+##### Investigate ShopeeLiga Match Ads #####
 ads_timeseries_shopeeliga <- ads_timeseries %>% 
   filter(program_name == 'SHOPEELIGA1(BIGMATCH)' & date_time2 < '2019-05-19 00:00:00') %>% 
   ungroup() %>% 
@@ -99,7 +99,7 @@ plotly_liga
 
 
 
-### Feed in csv from unsampled report in GA ####
+##### Feed in csv from unsampled report in GA #####
 ### Next steps: get data broken down by device category ###
 
 # sessions_h1 <- read_csv("Sessions by Date - Jan - Jun 2018.csv")
@@ -122,7 +122,7 @@ plotly_liga
 #   replace_na(list(visits=0))
 
 
-### Feed in csv table export for Q2 2019 (tv_attribution_set_2019) from BigQuery ###
+##### Feed in csv table export for Q2 2019 (tv_attribution_set_2019) from BigQuery #####
 # source: BQ Query SQL shown below, change date to between Apr & Jun 2019
 # run query, save as table and then export it to Google Cloud Storage as csv
 # From Google Cloud Storage, download csv files into local directory and read csv
@@ -144,7 +144,7 @@ sessions_q2_2019 <- sessions_q2_2019 %>%
   replace_na(list(visits=0))
 
 
-### BQ query#### SELECT
+##### BQ query #####
 # select 
 # date,
 # deviceCategory,
@@ -199,7 +199,7 @@ GA_org_direct_sessions <- sessions_q2_2019 %>%
   mutate(date_time =ymd_hms(paste(date, paste(hour, minute, seconds, sep=":")),  tz="Asia/Jakarta"))
 
 
-# collapse the graph by week / month ie a higher dimension 
+##### collapse the graph by week / month ie a higher dimension #####
 GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
@@ -214,7 +214,7 @@ GA_org_direct_sessions_weekly %>%
   theme_bw()
 
 
-# Determine pre and post event time frames varying post period timepre.period 
+##### Determine pre and post event time frames varying post period timepre.period  #####
 pre.period <- as.POSIXct(c("2019-04-01 00:00:00","2019-06-26 19:00:00"), tz = "Asia/Jakarta")
 post.period <- as.POSIXct(c("2019-06-26 21:30:00","2019-07-02 00:00:00"), tz = "Asia/Jakarta")
 
