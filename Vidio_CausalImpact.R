@@ -98,27 +98,6 @@ plotly_liga <- ggplotly(ggplot(ads_timeseries_shopeeliga,
 plotly_liga
 
 
-#### Get data from Google Analytics #####
-
-# login as new_user = TRUE if switching accounts. Otherwise do not set new_user = true
-# ga_auth()
-# ga_auth(new_user = TRUE)
-
-
-# get account list -------------------------------------
-# account_list <- ga_account_list()
-# 
-# gaids <- c(account_list[604,'viewId'])
-# 
-# 
-# data <- google_analytics(gaids,
-#                    date_range = c("2018-01-01","2018-06-01"),
-#                    metrics = c("sessions"),
-#                    dimensions = c("date", "hour", "minute", "channelGrouping"),
-#                    # anti_sample = TRUE,
-#                    max = -1,
-#                    useResourceQuotas = TRUE)
-
 
 ### Feed in csv from unsampled report in GA ####
 ### Next steps: get data broken down by device category ###
@@ -144,6 +123,10 @@ plotly_liga
 
 
 ### Feed in csv table export for Q2 2019 (tv_attribution_set_2019) from BigQuery ###
+# source: BQ Query SQL shown below, change date to between Apr & Jun 2019
+# run query, save as table and then export it to Google Cloud Storage as csv
+# From Google Cloud Storage, download csv files into local directory and read csv
+
 sessions_q2_2019_p1 <- read_csv("tv_attribution000000000000.csv")
 
 sessions_q2_2019_p2 <- read_csv("tv_attribution000000000001.csv")
@@ -161,26 +144,43 @@ sessions_q2_2019 <- sessions_q2_2019 %>%
   replace_na(list(visits=0))
 
 
-### BQ query###
-# SELECT
+### BQ query#### SELECT
+# select 
 # date,
-# visitStartTime,
-# device.deviceCategory deviceCategory,
-# EXTRACT(HOUR
-#         FROM
-#         TIMESTAMP_SECONDS(visitStartTime) AT TIME ZONE 'Asia/Jakarta') hour,
-# EXTRACT(minute
-#         FROM
-#         TIMESTAMP_SECONDS(visitStartTime) AT TIME ZONE 'Asia/Jakarta') minute,
+# deviceCategory,
 # channelGrouping,
-# SUM(totals.visits) Visits
-# FROM
-# `analisis-production.88939979.ga_sessions_*`
-# WHERE
-# _TABLE_SUFFIX BETWEEN '20190701'
-# AND '20190710'
-# --         _TABLE_SUFFIX BETWEEN '20180101'
-# --         AND '20190630'
+# hour,
+# minute,
+# sum(visits) visits 
+# from (
+#   SELECT
+#   date,
+#   visitStartTime,
+#   device.deviceCategory deviceCategory,
+#   EXTRACT(HOUR
+#           FROM
+#           TIMESTAMP_SECONDS(visitStartTime) AT TIME ZONE 'Asia/Jakarta') hour,
+#   EXTRACT(minute
+#           FROM
+#           TIMESTAMP_SECONDS(visitStartTime) AT TIME ZONE 'Asia/Jakarta') minute,
+#   channelGrouping,
+#   SUM(totals.visits) Visits
+#   FROM
+#   `analisis-production.88939979.ga_sessions_*`
+#   WHERE
+#   --   _TABLE_SUFFIX BETWEEN '20190701'
+#   --   AND '20190710'
+#   _TABLE_SUFFIX BETWEEN '20180101'
+#   AND '20190630'
+#   and regexp_contains(channelGrouping, 'Direct|Organic Search')
+#   GROUP BY
+#   date,
+#   visitStartTime,
+#   deviceCategory,
+#   hour,
+#   minute,
+#   channelGrouping
+# )
 # GROUP BY
 # date,
 # visitStartTime,
