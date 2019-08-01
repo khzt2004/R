@@ -1,7 +1,6 @@
 library(tidyverse)
 library(readxl)
 library(CausalImpact)
-library(lubridate)
 library(chron)
 library(janitor)
 library(xts)
@@ -12,6 +11,7 @@ library(googleAnalyticsR)
 library(future.apply)
 library(scales)
 library(tidyquant)
+library(lubridate)
 
 ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
 ads <- read_excel("TV_Ads_MayJune.xlsx")
@@ -216,12 +216,19 @@ GA_org_direct_sessions <- sessions_combined %>%
 
 
 ##### collapse the graph by week / month ie a higher dimension #####
+##### add 1 year to data from 2018 to provide a control for sessions ####
 GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
   collapse_by("hourly") %>% 
   group_by(date_time, device_category, default_channel_grouping) %>% 
-  summarise(sessions = sum(sessions))
+  summarise(sessions = sum(sessions)) %>% 
+  mutate(year = year(date_time),
+         session_spread = sessions) %>% 
+  spread(year, session_spread) %>% 
+  mutate(date_time_2018_to_2019 = case_when(lubridate::year(date_time) == 2018 ~ 
+                                            date_time + lubridate::years(1),
+                                            TRUE ~ date_time))
 
 GA_org_direct_sessions_weekly %>% 
   ggplot(aes(x = date_time, y = sessions)) + 
