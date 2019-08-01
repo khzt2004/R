@@ -217,7 +217,7 @@ GA_org_direct_sessions <- sessions_combined %>%
 
 ##### collapse the graph by week / month ie a higher dimension #####
 ##### add 1 year to data from 2018 to provide a control for sessions. The year value in column name indicates the orginal year from ####
-##### which the data was extracted ####
+##### which the data was extracted. It may not be necessary to perform a regression however ####
 GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
@@ -274,6 +274,12 @@ yearly_plot_recast %>%
   facet_grid(device_category ~ default_channel_grouping) +
   theme_bw()
 
+yearly_plot_recast_ggplotly <- ggplotly(ggplot(yearly_plot_recast, aes(x = date_time_2018_to_2019, y = recast_sessions)) + 
+                                          geom_line(aes(colour = year), size=1) +
+                                          facet_grid(device_category ~ default_channel_grouping) +
+                                          theme_bw())
+
+yearly_plot_recast_ggplotly
 
 ### build time series from dataframe ###
 GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
