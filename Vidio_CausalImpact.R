@@ -127,21 +127,21 @@ plotly_liga
 # run query, save as table and then export it to Google Cloud Storage as csv
 # From Google Cloud Storage, download csv files into local directory and read csv
 
-sessions_q2_2019_p1 <- read_csv("tv_attribution000000000000.csv")
-
-sessions_q2_2019_p2 <- read_csv("tv_attribution000000000001.csv")
-
-sessions_q2_2019_p3 <- read_csv("tv_attribution000000000002.csv")
-
-sessions_q2_2019 <- rbind(sessions_q2_2019_p1,
-                            sessions_q2_2019_p2,
-                            sessions_q2_2019_p3)
-
-rm(sessions_q2_2019_p1, sessions_q2_2019_p2, sessions_q2_2019_p3)
-
-sessions_q2_2019 <- sessions_q2_2019 %>% 
-  clean_names() %>% 
-  replace_na(list(visits=0))
+# sessions_q2_2019_p1 <- read_csv("tv_attribution000000000000.csv")
+# 
+# sessions_q2_2019_p2 <- read_csv("tv_attribution000000000001.csv")
+# 
+# sessions_q2_2019_p3 <- read_csv("tv_attribution000000000002.csv")
+# 
+# sessions_q2_2019 <- rbind(sessions_q2_2019_p1,
+#                             sessions_q2_2019_p2,
+#                             sessions_q2_2019_p3)
+# 
+# rm(sessions_q2_2019_p1, sessions_q2_2019_p2, sessions_q2_2019_p3)
+# 
+# sessions_q2_2019 <- sessions_q2_2019 %>% 
+#   clean_names() %>% 
+#   replace_na(list(visits=0))
 
 
 ##### BQ query #####
@@ -189,10 +189,26 @@ sessions_q2_2019 <- sessions_q2_2019 %>%
 # minute,
 # channelGrouping
 
+##### Feed in csv table export from Google Analytics for 2018-2019 Jan-June #####
+sessions_q1_2018 <- read_csv("sessions export - Jan 2018 - Mar 2018.csv")
+sessions_q2_2018 <- read_csv("sessions export - Apr 2018 - Jun 2018.csv")
+sessions_q1_2019 <- read_csv("sessions export - Jan 2019 - Mar 2019.csv")
+sessions_q2_2019 <- read_csv("sessions export - Apr 2019 - Jun 2019.csv")
 
-GA_org_direct_sessions <- sessions_q2_2019 %>% 
-  filter(channel_grouping == 'Organic Search' |
-           channel_grouping == 'Direct') %>% 
+sessions_combined <- rbind(sessions_q1_2018,
+                          sessions_q2_2018,
+                          sessions_q1_2019,
+                          sessions_q2_2019)
+
+rm(sessions_q1_2018, sessions_q2_2018, sessions_q1_2019, sessions_q2_2019)
+
+sessions_combined <- sessions_combined %>% 
+  clean_names() %>% 
+  replace_na(list(sessions=0))
+
+GA_org_direct_sessions <- sessions_combined %>% 
+  filter(default_channel_grouping == 'Organic Search' |
+           default_channel_grouping == 'Direct') %>% 
   mutate(date = ymd(date),
          time = (paste(hour, minute, sep=" ")),
          seconds = "00") %>% 
@@ -204,13 +220,13 @@ GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
   collapse_by("hourly") %>% 
-  group_by(date_time, device_category, channel_grouping) %>% 
-  summarise(visits = sum(visits))
+  group_by(date_time, device_category, default_channel_grouping) %>% 
+  summarise(sessions = sum(sessions))
 
 GA_org_direct_sessions_weekly %>% 
-  ggplot(aes(x = date_time, y = visits)) + 
-  geom_line(aes(colour = channel_grouping), size=1) +
-  facet_grid(device_category ~ channel_grouping) +
+  ggplot(aes(x = date_time, y = sessions)) + 
+  geom_line(aes(colour = default_channel_grouping), size=1) +
+  facet_grid(device_category ~ default_channel_grouping) +
   theme_bw()
 
 
@@ -219,9 +235,9 @@ pre.period <- as.POSIXct(c("2019-04-01 00:00:00","2019-06-26 19:00:00"), tz = "A
 post.period <- as.POSIXct(c("2019-06-26 21:30:00","2019-07-02 00:00:00"), tz = "Asia/Jakarta")
 
 GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>%
-  filter(device_category == 'mobile' & channel_grouping == 'Organic Search') %>% 
+  filter(device_category == 'mobile' & default_channel_grouping == 'Organic Search') %>% 
   group_by(date_time) %>% 
-  summarise(visits = sum(visits))
+  summarise(sessions = sum(sessions))
 
 GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
                                      order.by = GA_org_direct_sessions_visits$date_time)
