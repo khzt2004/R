@@ -216,19 +216,15 @@ GA_org_direct_sessions <- sessions_combined %>%
 
 
 ##### collapse the graph by week / month ie a higher dimension #####
-##### add 1 year to data from 2018 to provide a control for sessions ####
+##### add 1 year to data from 2018 to provide a control for sessions. The year value in column name indicates the orginal year from ####
+##### which the data was extracted ####
 GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
   collapse_by("hourly") %>% 
   group_by(date_time, device_category, default_channel_grouping) %>% 
-  summarise(sessions = sum(sessions)) %>% 
-  mutate(year = year(date_time),
-         session_spread = sessions) %>% 
-  spread(year, session_spread) %>% 
-  mutate(date_time_2018_to_2019 = case_when(lubridate::year(date_time) == 2018 ~ 
-                                            date_time + lubridate::years(1),
-                                            TRUE ~ date_time))
+  summarise(sessions = sum(sessions))
+
 
 GA_org_direct_sessions_weekly %>% 
   ggplot(aes(x = date_time, y = sessions)) + 
@@ -238,18 +234,53 @@ GA_org_direct_sessions_weekly %>%
 
 
 ##### Determine pre and post event time frames varying post period timepre.period  #####
-pre.period <- as.POSIXct(c("2019-04-01 00:00:00","2019-06-26 19:00:00"), tz = "Asia/Jakarta")
-post.period <- as.POSIXct(c("2019-06-26 21:30:00","2019-07-02 00:00:00"), tz = "Asia/Jakarta")
+pre.period <- as.POSIXct(c("2019-01-01 00:00:00","2019-06-26 19:00:00"), tz = "Asia/Jakarta")
+post.period <- as.POSIXct(c("2019-06-26 21:30:00","2019-06-30 00:00:00"), tz = "Asia/Jakarta")
 
 GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>%
   filter(device_category == 'mobile' & default_channel_grouping == 'Organic Search') %>% 
   group_by(date_time) %>% 
-  summarise(sessions = sum(sessions))
+  summarise(sessions = sum(sessions)) %>% 
+  mutate(year = year(date_time),
+         session_spread = sessions) %>% 
+  spread(year, session_spread) %>% 
+  mutate(date_time_2018_to_2019 = case_when(lubridate::year(date_time) == 2018 ~ 
+                                              date_time + lubridate::years(1),
+                                            TRUE ~ date_time)) %>% 
+  select(date_time_2018_to_2019, year_2019 = `2019`, year_2018 = `2018`) %>% 
+  group_by(date_time_2018_to_2019) %>% 
+  summarise(year_2019 = sum(year_2019, na.rm = TRUE),
+            year_2018 = sum(year_2018, na.rm = TRUE))
 
+
+### investigate breakdown of data by dimensions, using a plot ###
+yearly_plot_recast <- GA_org_direct_sessions_weekly %>%
+  group_by(date_time, device_category, default_channel_grouping) %>% 
+  summarise(sessions = sum(sessions)) %>% 
+  mutate(year = year(date_time),
+         session_spread = sessions) %>% 
+  spread(year, session_spread) %>% 
+  mutate(date_time_2018_to_2019 = case_when(lubridate::year(date_time) == 2018 ~ 
+                                              date_time + lubridate::years(1),
+                                            TRUE ~ date_time)) %>% 
+  gather(year, recast_sessions, `2018`:`2019`) %>% 
+  select(date_time_2018_to_2019, year, default_channel_grouping, device_category, recast_sessions) %>% 
+  group_by(date_time_2018_to_2019, year, default_channel_grouping, device_category) %>% 
+  summarise(recast_sessions = sum(recast_sessions, na.rm = TRUE))
+
+yearly_plot_recast %>% 
+  ggplot(aes(x = date_time_2018_to_2019, y = recast_sessions)) + 
+  geom_line(aes(colour = year), size=1) +
+  facet_grid(device_category ~ default_channel_grouping) +
+  theme_bw()
+
+
+### build time series from dataframe ###
 GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
-                                     order.by = GA_org_direct_sessions_visits$date_time)
+                                     order.by = GA_org_direct_sessions_visits$date_time_2018_to_2019)
                           
-                                     
+
+### build causal impact model from time series ###
 ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
 
 # to get the p-value: ad_impact_model$summary$p[1]
