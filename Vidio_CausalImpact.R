@@ -17,14 +17,19 @@ ads <- read_excel("C:\\Users\\User\\Documents\\TV_Ads_MayJune.xlsx")
 ads <- read_excel("TV_Ads_MayJune.xlsx")
 
 ##### filter out time where hours greater than 24 first #####
-ads <- ads %>% 
+ads_clean <- ads %>% 
   filter(!grepl("^24:|^28:", Time)) %>% 
   mutate(Date = as.Date(Date),
          Time = as.numeric(Time)) %>% 
   mutate(Time = times(Time)) %>% 
   mutate(date_time = ymd_hms(paste(Date, Time, sep=" "), tz="Asia/Jakarta")) %>% 
   clean_names() %>% 
-  mutate(date_time2 = date_time) %>% 
+  mutate(date_time2 = date_time,
+         hour_amended = hour(date_time2)) %>% 
+  mutate(hourly_bucket_amended = case_when(hour_amended >= 19 & hour_amended <= 23 ~ "Prime Time",
+         hour_amended >= 6 & hour_amended <= 12 ~ "Morning",
+         hour_amended >= 13 & hour_amended <= 19 ~ "Afternoon",
+         hour_amended >= 0 & hour_amended <= 5 ~ "Midnight")) %>% 
   as_tbl_time(index = date_time) %>% 
   collapse_by("hourly", side="start", clean=TRUE) %>% 
   group_by_all() %>%
@@ -35,11 +40,11 @@ ads <- ads %>%
   fill_by_value(sum_byhour, count_byhour, value = 0) 
 
 
-ggplot(ads, aes(x = as.Date(date_time), y = sum_byhour)) + geom_line()
+ggplot(ads_clean, aes(x = as.Date(date_time), y = sum_byhour)) + geom_line()
 
 
 ##### explore data by hour - this will determine the intervention hour #####
-ads_hour <- ads %>%
+ads_hour <- ads_clean %>%
   group_by(hour = lubridate::hour(date_time2), program_name) %>% 
   summarise(sum_byhour = sum(sum_byhour))
 
@@ -55,7 +60,7 @@ p <- ggplotly(ggplot(ads_hour, aes(x = hour, y = sum_byhour)) +
 p
 
 ##### explore data by time - this will determine the frequency of ads over time #####
-ads_timeseries <- ads %>%
+ads_timeseries <- ads_clean %>%
   replace_na(list(sum_byhour=0)) %>%
   filter(!is.na(date_time2)) %>% 
   arrange(date_time2) %>% 
@@ -192,15 +197,20 @@ plotly_liga
 ##### Feed in csv table export from Google Analytics for 2018-2019 Jan-June #####
 sessions_q1_2018 <- read_csv("sessions export - Jan 2018 - Mar 2018.csv")
 sessions_q2_2018 <- read_csv("sessions export - Apr 2018 - Jun 2018.csv")
+sessions_q3_2018 <- read_csv("sessions export - Jul 2018 - Sep 2018.csv")
+sessions_q4_2018 <- read_csv("sessions export - Oct 2018 - Dec 2018.csv")
 sessions_q1_2019 <- read_csv("sessions export - Jan 2019 - Mar 2019.csv")
 sessions_q2_2019 <- read_csv("sessions export - Apr 2019 - Jun 2019.csv")
 
 sessions_combined <- rbind(sessions_q1_2018,
                           sessions_q2_2018,
+                          sessions_q3_2018,
+                          sessions_q4_2018,
                           sessions_q1_2019,
                           sessions_q2_2019)
 
-rm(sessions_q1_2018, sessions_q2_2018, sessions_q1_2019, sessions_q2_2019)
+rm(sessions_q1_2018, sessions_q2_2018, sessions_q1_2019, sessions_q2_2019, sessions_q3_2018,
+   sessions_q4_2018)
 
 sessions_combined <- sessions_combined %>% 
   clean_names() %>% 
@@ -216,8 +226,6 @@ GA_org_direct_sessions <- sessions_combined %>%
 
 
 ##### collapse the graph by week / month ie a higher dimension #####
-##### add 1 year to data from 2018 to provide a control for sessions. The year value in column name indicates the orginal year from ####
-##### which the data was extracted. It may not be necessary to perform a regression however ####
 GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
   arrange(date_time) %>% 
   as_tbl_time(index = date_time) %>% 
@@ -234,56 +242,19 @@ GA_org_direct_sessions_weekly %>%
 
 
 ##### Determine pre and post event time frames varying post period timepre.period  #####
-pre.period <- as.POSIXct(c("2019-01-01 00:00:00","2019-06-26 19:00:00"), tz = "Asia/Jakarta")
-post.period <- as.POSIXct(c("2019-06-26 21:30:00","2019-06-30 00:00:00"), tz = "Asia/Jakarta")
+pre.period <- as.POSIXct(c("2019-01-01 00:00:00","2019-05-16 20:00:00"), tz = "Asia/Jakarta")
+post.period <- as.POSIXct(c("2019-05-16 23:00:00","2019-05-19 23:00:00"), tz = "Asia/Jakarta")
 
 GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>%
   filter(device_category == 'mobile' & default_channel_grouping == 'Organic Search') %>% 
   group_by(date_time) %>% 
   summarise(sessions = sum(sessions)) %>% 
-  mutate(year = year(date_time),
-         session_spread = sessions) %>% 
-  spread(year, session_spread) %>% 
-  mutate(date_time_2018_to_2019 = case_when(lubridate::year(date_time) == 2018 ~ 
-                                              date_time + lubridate::years(1),
-                                            TRUE ~ date_time)) %>% 
-  select(date_time_2018_to_2019, year_2019 = `2019`, year_2018 = `2018`) %>% 
-  group_by(date_time_2018_to_2019) %>% 
-  summarise(year_2019 = sum(year_2019, na.rm = TRUE),
-            year_2018 = sum(year_2018, na.rm = TRUE))
+  mutate(year = year(date_time))
 
-
-### investigate breakdown of data by dimensions, using a plot ###
-yearly_plot_recast <- GA_org_direct_sessions_weekly %>%
-  group_by(date_time, device_category, default_channel_grouping) %>% 
-  summarise(sessions = sum(sessions)) %>% 
-  mutate(year = year(date_time),
-         session_spread = sessions) %>% 
-  spread(year, session_spread) %>% 
-  mutate(date_time_2018_to_2019 = case_when(lubridate::year(date_time) == 2018 ~ 
-                                              date_time + lubridate::years(1),
-                                            TRUE ~ date_time)) %>% 
-  gather(year, recast_sessions, `2018`:`2019`) %>% 
-  select(date_time_2018_to_2019, year, default_channel_grouping, device_category, recast_sessions) %>% 
-  group_by(date_time_2018_to_2019, year, default_channel_grouping, device_category) %>% 
-  summarise(recast_sessions = sum(recast_sessions, na.rm = TRUE))
-
-yearly_plot_recast %>% 
-  ggplot(aes(x = date_time_2018_to_2019, y = recast_sessions)) + 
-  geom_line(aes(colour = year), size=1) +
-  facet_grid(device_category ~ default_channel_grouping) +
-  theme_bw()
-
-yearly_plot_recast_ggplotly <- ggplotly(ggplot(yearly_plot_recast, aes(x = date_time_2018_to_2019, y = recast_sessions)) + 
-                                          geom_line(aes(colour = year), size=1) +
-                                          facet_grid(device_category ~ default_channel_grouping) +
-                                          theme_bw())
-
-yearly_plot_recast_ggplotly
 
 ### build time series from dataframe ###
 GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
-                                     order.by = GA_org_direct_sessions_visits$date_time_2018_to_2019)
+                                     order.by = GA_org_direct_sessions_visits$date_time)
                           
 
 ### build causal impact model from time series ###
