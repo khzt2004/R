@@ -66,7 +66,7 @@ ads_timeseries <- ads_clean %>%
   arrange(date_time2) %>% 
   as_tbl_time(index = date_time2) %>% 
   collapse_by("hourly") %>% 
-  group_by(date_time2, program_name) %>% 
+  group_by(date_time2, program_name, content_type, hourly_bucket_amended, hour_amended) %>% 
   summarise(sum_byhour = sum(sum_byhour))
 
 ads_timeseries %>% 
@@ -266,6 +266,69 @@ summary(ad_impact_model)
 summary(ad_impact_model, "report")
 
 
+#### Function for running causal impact study across multiple ads ####
+
+tv_ad_workings <- read_csv("TV Attribution - Workings.csv")
+tv_ad_workings <- head(tv_ad_workings, 3)
+
+eval_causal_Impact <- function(device_cat, 
+                               channel_grouping,
+                               pre_intervention_start,
+                               pre_intervention_end, 
+                               post_intervention_start,
+                               post_intervention_end) {
+  
+  pre.period <- as.POSIXct(c(pre_intervention_start, pre_intervention_end), tz = "Asia/Jakarta")
+  post.period <- as.POSIXct(c(post_intervention_start, post_intervention_end), tz = "Asia/Jakarta")
+  
+  GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>%
+    filter(device_category == device_cat & default_channel_grouping == channel_grouping) %>% 
+    group_by(date_time) %>% 
+    summarise(sessions = sum(sessions)) %>% 
+    mutate(year = year(date_time))
+  
+  
+  ### build time series from dataframe ###
+  GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
+                                       order.by = GA_org_direct_sessions_visits$date_time)
+  
+  
+  ### build causal impact model from time series ###
+  ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
+  
+  
+ return(ad_impact_model$summary$p[1])
+  
+}
+
+
+tv_ad_workings_causalimpact <- tv_ad_workings %>%
+  clean_names() %>% 
+  mutate(device_category_web_traffic = tolower(device_category_web_traffic))
+  
+
+tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>% 
+  separate(pre_intervention_period, c("pre_intervention_start", "pre_intervention_end"), ",") %>% 
+  separate(post_intervention_period, c("post_intervention_start", "post_intervention_end"), ",")
 
 
 
+test_output <- list()
+
+start_time <- Sys.time()
+for (i in 1:nrow(tv_ad_workings_causalimpact)) {
+p_value <- eval_causal_Impact(tv_ad_workings_causalimpact$device_category_web_traffic[i],
+                              tv_ad_workings_causalimpact$channel_grouping_web_traffic[i],
+                              tv_ad_workings_causalimpact$pre_intervention_start[i],
+                              tv_ad_workings_causalimpact$pre_intervention_end[i],
+                              tv_ad_workings_causalimpact$post_intervention_start[i],
+                              tv_ad_workings_causalimpact$post_intervention_end[i])
+test_output <- append(test_output, p_value)
+}
+
+end_time <- Sys.time()
+end_time - start_time
+
+tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>% 
+  mutate(p_value = test_output) %>% 
+  mutate(p_value = as.numeric(p_value)) 
