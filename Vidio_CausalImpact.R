@@ -263,6 +263,7 @@ ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.p
 # to get the p-value: ad_impact_model$summary$p[1]
 
 summary(ad_impact_model)
+plot(ad_impact_model)
 summary(ad_impact_model, "report")
 
 
@@ -297,7 +298,10 @@ eval_causal_Impact <- function(device_cat,
   ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
   
   
- return(ad_impact_model$summary$p[1])
+ return(list(p_value = list(ad_impact_model$summary$p[1]), 
+        expected = list(ad_impact_model$summary$Actual[1]), 
+        predicted = list(ad_impact_model$summary$Pred[1]),
+        relative_effect = list(ad_impact_model$summary$RelEffect[1])))
   
 }
 
@@ -317,18 +321,29 @@ test_output <- list()
 
 start_time <- Sys.time()
 for (i in 1:nrow(tv_ad_workings_causalimpact)) {
-p_value <- eval_causal_Impact(tv_ad_workings_causalimpact$device_category_web_traffic[i],
+modeloutput <- eval_causal_Impact(tv_ad_workings_causalimpact$device_category_web_traffic[i],
                               tv_ad_workings_causalimpact$channel_grouping_web_traffic[i],
                               tv_ad_workings_causalimpact$pre_intervention_start[i],
                               tv_ad_workings_causalimpact$pre_intervention_end[i],
                               tv_ad_workings_causalimpact$post_intervention_start[i],
                               tv_ad_workings_causalimpact$post_intervention_end[i])
-test_output <- append(test_output, p_value)
+test_output <- append(test_output, modeloutput)
 }
+
+test_output_df <- data.frame(id=names(test_output), values=unlist(test_output))
+test_output_df <- test_output_df %>% 
+  group_by_at(vars(-values)) %>% 
+  mutate(row_id=1:n()) %>% 
+  ungroup() %>% 
+  spread(key=id, value=values) %>%
+  select(-row_id)
 
 end_time <- Sys.time()
 end_time - start_time
 
 tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>% 
-  mutate(p_value = test_output) %>% 
+  mutate(p_value = test_output$p_value,
+         expected_avg_sessions = test_output$expected,
+         predicted_avg_sessions = test_output$predicted,
+         effect = test_output$relative_effect) %>% 
   mutate(p_value = as.numeric(p_value)) 
