@@ -240,7 +240,7 @@ GA_org_direct_sessions_weekly %>%
   facet_grid(device_category ~ default_channel_grouping) +
   theme_bw()
 
-
+############## CAN BE SKIPPED ##############
 ##### Determine pre and post event time frames varying post period timepre.period  #####
 pre.period <- as.POSIXct(c("2019-01-01 00:00:00","2019-05-16 20:00:00"), tz = "Asia/Jakarta")
 post.period <- as.POSIXct(c("2019-05-16 23:00:00","2019-05-19 23:00:00"), tz = "Asia/Jakarta")
@@ -266,6 +266,7 @@ summary(ad_impact_model)
 plot(ad_impact_model)
 summary(ad_impact_model, "report")
 
+############## CAN BE SKIPPED ##############
 
 #### Function for running causal impact study across multiple ads ####
 
@@ -342,8 +343,8 @@ end_time <- Sys.time()
 end_time - start_time
 
 tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>% 
-  mutate(p_value = test_output$p_value,
-         expected_avg_sessions = test_output$expected,
-         predicted_avg_sessions = test_output$predicted,
-         effect = test_output$relative_effect) %>% 
+  mutate(p_value = test_output_df$p_value,
+         expected_avg_sessions = test_output_df$expected,
+         predicted_avg_sessions = test_output_df$predicted,
+         effect = test_output_df$relative_effect) %>% 
   mutate(p_value = as.numeric(p_value)) 
