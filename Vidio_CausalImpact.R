@@ -201,16 +201,18 @@ sessions_q3_2018 <- read_csv("sessions export - Jul 2018 - Sep 2018.csv")
 sessions_q4_2018 <- read_csv("sessions export - Oct 2018 - Dec 2018.csv")
 sessions_q1_2019 <- read_csv("sessions export - Jan 2019 - Mar 2019.csv")
 sessions_q2_2019 <- read_csv("sessions export - Apr 2019 - Jun 2019.csv")
+sessions_jul_2019 <- read_csv("sessions export - Jul 2019.csv")
 
 sessions_combined <- rbind(sessions_q1_2018,
                           sessions_q2_2018,
                           sessions_q3_2018,
                           sessions_q4_2018,
                           sessions_q1_2019,
-                          sessions_q2_2019)
+                          sessions_q2_2019,
+                          sessions_jul_2019)
 
 rm(sessions_q1_2018, sessions_q2_2018, sessions_q1_2019, sessions_q2_2019, sessions_q3_2018,
-   sessions_q4_2018)
+   sessions_q4_2018, sessions_jul_2019)
 
 sessions_combined <- sessions_combined %>% 
   clean_names() %>% 
