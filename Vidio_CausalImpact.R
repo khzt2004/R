@@ -272,8 +272,8 @@ summary(ad_impact_model, "report")
 
 #### Function for running causal impact study across multiple ads ####
 
-tv_ad_workings <- read_csv("TV Attribution - Workings.csv")
-tv_ad_workings <- head(tv_ad_workings, 3)
+tv_ad_workings <- read_csv("TV Attribution - Workings_5.csv")
+#tv_ad_workings <- head(tv_ad_workings, 3)
 
 eval_causal_Impact <- function(device_cat, 
                                channel_grouping,
@@ -350,3 +350,5 @@ tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>%
          predicted_avg_sessions = test_output_df$predicted,
          effect = test_output_df$relative_effect) %>% 
   mutate(p_value = as.numeric(p_value)) 
+
+write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_5.csv")
