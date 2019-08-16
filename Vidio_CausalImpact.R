@@ -237,6 +237,7 @@ GA_org_direct_sessions_weekly <- GA_org_direct_sessions %>%
 
 
 GA_org_direct_sessions_weekly %>% 
+  filter(date_time > as.POSIXct("2019-05-29 01:00:00", tz="Asia/Jakarta")) %>% 
   ggplot(aes(x = date_time, y = sessions)) + 
   geom_line(aes(colour = default_channel_grouping), size=1) +
   facet_grid(device_category ~ default_channel_grouping) +
@@ -244,23 +245,26 @@ GA_org_direct_sessions_weekly %>%
 
 ############## CAN BE SKIPPED ##############
 ##### Determine pre and post event time frames varying post period timepre.period  #####
-pre.period <- as.POSIXct(c("2019-01-01 00:00:00","2019-05-16 20:00:00"), tz = "Asia/Jakarta")
-post.period <- as.POSIXct(c("2019-05-16 23:00:00","2019-05-19 23:00:00"), tz = "Asia/Jakarta")
+pre.period <- as.POSIXct(c("2019-01-01 00:00:00","2019-05-15 20:50:00"), tz = "Asia/Jakarta")
+post.period <- as.POSIXct(c("2019-05-15 23:00:00","2019-05-22 23:00:00"), tz = "Asia/Jakarta")
 
 GA_org_direct_sessions_visits <- GA_org_direct_sessions_weekly %>%
-  filter(device_category == 'mobile' & default_channel_grouping == 'Organic Search') %>% 
+  filter(device_category == 'desktop' & default_channel_grouping == 'Organic Search') %>% 
   group_by(date_time) %>% 
   summarise(sessions = sum(sessions)) %>% 
   mutate(year = year(date_time))
 
 
 ### build time series from dataframe ###
-GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
+GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[,2],
                                      order.by = GA_org_direct_sessions_visits$date_time)
                           
 
 ### build causal impact model from time series ###
-ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
+ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, 
+                               pre.period,
+                               post.period,
+                               model.args = list(nseasons = 7, season.duration = 24))
 
 # to get the p-value: ad_impact_model$summary$p[1]
 
@@ -272,7 +276,7 @@ summary(ad_impact_model, "report")
 
 #### Function for running causal impact study across multiple ads ####
 
-tv_ad_workings <- read_csv("TV Attribution - Workings_5.csv")
+tv_ad_workings <- read_csv("TV Attribution - Workings_1.csv")
 #tv_ad_workings <- head(tv_ad_workings, 3)
 
 eval_causal_Impact <- function(device_cat, 
@@ -298,13 +302,17 @@ eval_causal_Impact <- function(device_cat,
   
   
   ### build causal impact model from time series ###
-  ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, pre.period, post.period)
+  ad_impact_model = CausalImpact(GA_org_direct_sessions_visits, 
+                                 pre.period, 
+                                 post.period,
+                                 model.args = list(nseasons = 7, season.duration = 24))
   
   
  return(list(p_value = list(ad_impact_model$summary$p[1]), 
         expected = list(ad_impact_model$summary$Actual[1]), 
         predicted = list(ad_impact_model$summary$Pred[1]),
-        relative_effect = list(ad_impact_model$summary$RelEffect[1])))
+        relative_effect = list(ad_impact_model$summary$RelEffect[1]),
+        relative_effect_stddev_pct = list(ad_impact_model$summary$RelEffect.sd[1])))
   
 }
 
@@ -348,7 +356,43 @@ tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>%
   mutate(p_value = test_output_df$p_value,
          expected_avg_sessions = test_output_df$expected,
          predicted_avg_sessions = test_output_df$predicted,
-         effect = test_output_df$relative_effect) %>% 
+         effect = test_output_df$relative_effect,
+         standard_deviation = test_output_df$relative_effect_stddev_pct) %>% 
   mutate(p_value = as.numeric(p_value)) 
 
-write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_5.csv")
+write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_1.csv")
+
+### import csv of results
+total_table <- read_csv('tv_ad_total_causalimpact.csv')
+total_table <- total_table %>% 
+  clean_names() %>% 
+  select(ad_date,
+         program_name,
+         hourly_bucket, 
+         ad_content_type, 
+         device_category_web_traffic,
+         channel_grouping_web_traffic,
+         p_value,
+         incremental_sessions_pred_avg) %>% 
+  mutate(ad_date = parse_date_time(ad_date,
+                                   c('%d/%m/%Y %H:%M'), 
+                                   exact = TRUE, 
+                                   tz = "Asia/Jakarta"),
+         is_significant_result = case_when(p_value <= 0.05 ~ "95%",
+                                           p_value > 0.05 & p_value <= 0.1 ~ "90%",
+                                           p_value > 0.1 ~ "not significant")) %>% 
+  mutate(date = as.Date(ad_date)) %>% 
+  filter(date < "2019-06-15")
+
+### visualise heatmap of statistical significance
+heatmap <- ggplotly(ggplot(total_table, aes(x = date, 
+                        y = program_name,
+                        fill = is_significant_result)) + 
+  geom_tile() +
+  facet_grid(channel_grouping_web_traffic ~ device_category_web_traffic))
+
+heatmap
+
+total_table_stat_sig <- total_table %>% 
+  filter(is_significant_result == "95%" | is_significant_result == "90%")
+
