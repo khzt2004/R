@@ -276,7 +276,7 @@ summary(ad_impact_model, "report")
 
 #### Function for running causal impact study across multiple ads ####
 
-tv_ad_workings <- read_csv("TV Attribution - Workings_1.csv")
+tv_ad_workings <- read_csv("TV Attribution - Workings_2.csv")
 #tv_ad_workings <- head(tv_ad_workings, 3)
 
 eval_causal_Impact <- function(device_cat, 
@@ -297,7 +297,7 @@ eval_causal_Impact <- function(device_cat,
   
   
   ### build time series from dataframe ###
-  GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[-1],
+  GA_org_direct_sessions_visits <- xts(GA_org_direct_sessions_visits[,2],
                                        order.by = GA_org_direct_sessions_visits$date_time)
   
   
@@ -360,7 +360,7 @@ tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>%
          standard_deviation = test_output_df$relative_effect_stddev_pct) %>% 
   mutate(p_value = as.numeric(p_value)) 
 
-write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_1.csv")
+write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_2.csv")
 
 ### import csv of results
 total_table <- read_csv('tv_ad_total_causalimpact.csv')
