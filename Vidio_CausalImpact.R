@@ -272,11 +272,39 @@ summary(ad_impact_model)
 plot(ad_impact_model)
 summary(ad_impact_model, "report")
 
+ad_model_response <- ad_impact_model[["series"]]$response
+ad_model_response <- fortify.zoo(ad_model_response, name = "Date")
+
+ad_model_predict <- ad_impact_model[["series"]]$point.pred
+ad_model_predict <- fortify.zoo(ad_model_predict, name = "Date")
+
+ad_model_predict_response <- cbind(ad_model_response, ad_model_predict)
+colnames(ad_model_predict_response) <- c("Date", 
+                                         "ad_model_response",
+                                         "Date2",
+                                         "ad_model_predict")
+ad_model_predict_response <- ad_model_predict_response %>% 
+  select(-Date2) %>% 
+  filter(Date > "2019-05-15 23:00:00" &
+         Date < "2019-05-22 23:00:00")
+
+ad_model_predict_response %>% 
+  ggplot(aes(x = Date, y = ad_model_response)) + 
+  geom_line(aes(y = ad_model_response)) +
+  geom_line(aes(y = ad_model_predict)) +
+  geom_ribbon(data=subset(ad_model_predict_response, 
+                          "2019-05-15 17:59:00" <= Date & 
+                            Date <= "2019-05-16 01:00:00"), 
+              aes(ymin= ad_model_response,ymax=ad_model_predict), 
+              fill="blue", 
+              alpha="0.5") + 
+  theme_bw()
+
 ############## CAN BE SKIPPED ##############
 
 #### Function for running causal impact study across multiple ads ####
 
-tv_ad_workings <- read_csv("TV Attribution - Workings_2.csv")
+tv_ad_workings <- read_csv("TV Attribution - Workings_6.csv")
 #tv_ad_workings <- head(tv_ad_workings, 3)
 
 eval_causal_Impact <- function(device_cat, 
@@ -360,7 +388,7 @@ tv_ad_workings_causalimpact <- tv_ad_workings_causalimpact %>%
          standard_deviation = test_output_df$relative_effect_stddev_pct) %>% 
   mutate(p_value = as.numeric(p_value)) 
 
-write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_2.csv")
+write_csv(tv_ad_workings_causalimpact, "tv_ad_workings_causalimpact_6.csv")
 
 ### import csv of results
 total_table <- read_csv('tv_ad_total_causalimpact.csv')
