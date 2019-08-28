@@ -424,3 +424,38 @@ heatmap
 total_table_stat_sig <- total_table %>% 
   filter(is_significant_result == "95%" | is_significant_result == "90%")
 
+
+### create boxplot for 7-day viz data ####
+
+data <- read_csv("boxplot_data.csv")
+
+p <- ggplot(data, aes(x=channel_grouping_web_traffic,
+                      y=sessions,
+                      color=device_category_web_traffic)) +
+  coord_flip() +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
+  xlab("Channel Grouping") +
+  labs(color = "Device Category") +
+  ggtitle("Number of Sessions from Attributable Ads") +
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  facet_grid(device_category_web_traffic ~ .)
+
+p <- ggplotly(p)
+p
+
+ggplot(data, aes(x=channel_grouping_web_traffic,
+                 y=sessions,
+                 color=device_category_web_traffic)) +
+  coord_flip() +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
+  xlab("Channel Grouping") +
+  labs(color = "Device Category") +
+  ggtitle("Number of Sessions from Attributable Ads") +
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  facet_grid(device_category_web_traffic ~ .)
+
+ggsave("boxplot.png", units="in", width=6, height=3.5, dpi=400)
+dev.off()
+
