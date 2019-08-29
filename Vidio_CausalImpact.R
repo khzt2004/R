@@ -461,7 +461,12 @@ dev.off()
 
 
 #### 3-day analysis - change timestamp of post intervention period ####
-tv_ad_workings_3day <- read_csv("TV Attribution - Workings_6.csv")
+
+filenames <- c("TV Attribution - Workings_2.csv")
+
+for (i in filenames) {
+
+tv_ad_workings_3day <- read_csv(i)
 
 tv_ad_workings_causalimpact_3day <- tv_ad_workings_3day %>%
   clean_names() %>% 
@@ -506,7 +511,9 @@ tv_ad_workings_causalimpact_3day <- tv_ad_workings_causalimpact_3day %>%
          standard_deviation = test_output_3day_df$relative_effect_stddev_pct) %>% 
   mutate(p_value = as.numeric(p_value)) 
 
-write_csv(tv_ad_workings_causalimpact_3day, "tv_ad_workings_causalimpact_3day_6.csv")
-
+write_csv(tv_ad_workings_causalimpact_3day, paste0("tv_ad_workings_causalimpact_3day_", 
+                                                   str_extract(string = i, pattern = "[0-9]"),
+                                                   ".csv"))
+}
 
 
