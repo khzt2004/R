@@ -459,3 +459,54 @@ ggplot(data, aes(x=channel_grouping_web_traffic,
 ggsave("boxplot.png", units="in", width=6, height=3.5, dpi=400)
 dev.off()
 
+
+#### 3-day analysis - change timestamp of post intervention period ####
+tv_ad_workings_3day <- read_csv("TV Attribution - Workings_6.csv")
+
+tv_ad_workings_causalimpact_3day <- tv_ad_workings_3day %>%
+  clean_names() %>% 
+  mutate(device_category_web_traffic = tolower(device_category_web_traffic))
+
+
+tv_ad_workings_causalimpact_3day <- tv_ad_workings_causalimpact_3day %>% 
+  separate(pre_intervention_period, c("pre_intervention_start", "pre_intervention_end"), ",") %>% 
+  separate(post_intervention_period, c("post_intervention_start", "post_intervention_end"), ",") %>% 
+  mutate(post_intervention_end = as.POSIXct(post_intervention_end, tz = "Asia/Jakarta") - lubridate::days(4)) %>% 
+  mutate(post_intervention_end = as.character(post_intervention_end))
+
+test_output_3day <- list()
+
+start_time <- Sys.time()
+for (i in 1:nrow(tv_ad_workings_causalimpact_3day)) {
+  modeloutput <- eval_causal_Impact(tv_ad_workings_causalimpact_3day$device_category_web_traffic[i],
+                                    tv_ad_workings_causalimpact_3day$channel_grouping_web_traffic[i],
+                                    tv_ad_workings_causalimpact_3day$pre_intervention_start[i],
+                                    tv_ad_workings_causalimpact_3day$pre_intervention_end[i],
+                                    tv_ad_workings_causalimpact_3day$post_intervention_start[i],
+                                    tv_ad_workings_causalimpact_3day$post_intervention_end[i])
+  test_output_3day <- append(test_output_3day, modeloutput)
+}
+
+test_output_3day_df <- data.frame(id=names(test_output_3day), values=unlist(test_output_3day))
+test_output_3day_df <- test_output_3day_df %>% 
+  group_by_at(vars(-values)) %>% 
+  mutate(row_id=1:n()) %>% 
+  ungroup() %>% 
+  spread(key=id, value=values) %>%
+  select(-row_id)
+
+end_time <- Sys.time()
+end_time - start_time
+
+tv_ad_workings_causalimpact_3day <- tv_ad_workings_causalimpact_3day %>% 
+  mutate(p_value = test_output_3day_df$p_value,
+         expected_avg_sessions = test_output_3day_df$expected,
+         predicted_avg_sessions = test_output_3day_df$predicted,
+         effect = test_output_3day_df$relative_effect,
+         standard_deviation = test_output_3day_df$relative_effect_stddev_pct) %>% 
+  mutate(p_value = as.numeric(p_value)) 
+
+write_csv(tv_ad_workings_causalimpact_3day, "tv_ad_workings_causalimpact_3day_6.csv")
+
+
+
