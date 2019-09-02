@@ -462,7 +462,7 @@ dev.off()
 
 #### 3-day analysis - change timestamp of post intervention period ####
 
-filenames <- c("TV Attribution - Workings_2.csv")
+filenames <- c("TV Attribution - Workings_4.csv")
 
 for (i in filenames) {
 
@@ -517,3 +517,124 @@ write_csv(tv_ad_workings_causalimpact_3day, paste0("tv_ad_workings_causalimpact_
 }
 
 
+
+#### 5-day analysis - change timestamp of post intervention period ####
+
+filenames <- c("TV Attribution - Workings_2.csv")
+
+for (i in filenames) {
+  
+  tv_ad_workings_5day <- read_csv(i)
+  
+  tv_ad_workings_causalimpact_5day <- tv_ad_workings_5day %>%
+    clean_names() %>% 
+    mutate(device_category_web_traffic = tolower(device_category_web_traffic))
+  
+  
+  tv_ad_workings_causalimpact_5day <- tv_ad_workings_causalimpact_5day %>% 
+    separate(pre_intervention_period, c("pre_intervention_start", "pre_intervention_end"), ",") %>% 
+    separate(post_intervention_period, c("post_intervention_start", "post_intervention_end"), ",") %>% 
+    mutate(post_intervention_end = as.POSIXct(post_intervention_end, tz = "Asia/Jakarta") - lubridate::days(2)) %>% 
+    mutate(post_intervention_end = as.character(post_intervention_end))
+  
+  test_output_5day <- list()
+  
+  start_time <- Sys.time()
+  for (i in 1:nrow(tv_ad_workings_causalimpact_5day)) {
+    modeloutput <- eval_causal_Impact(tv_ad_workings_causalimpact_5day$device_category_web_traffic[i],
+                                      tv_ad_workings_causalimpact_5day$channel_grouping_web_traffic[i],
+                                      tv_ad_workings_causalimpact_5day$pre_intervention_start[i],
+                                      tv_ad_workings_causalimpact_5day$pre_intervention_end[i],
+                                      tv_ad_workings_causalimpact_5day$post_intervention_start[i],
+                                      tv_ad_workings_causalimpact_5day$post_intervention_end[i])
+    test_output_5day <- append(test_output_5day, modeloutput)
+  }
+  
+  test_output_5day_df <- data.frame(id=names(test_output_5day), values=unlist(test_output_5day))
+  test_output_5day_df <- test_output_5day_df %>% 
+    group_by_at(vars(-values)) %>% 
+    mutate(row_id=1:n()) %>% 
+    ungroup() %>% 
+    spread(key=id, value=values) %>%
+    select(-row_id)
+  
+  end_time <- Sys.time()
+  end_time - start_time
+  
+  tv_ad_workings_causalimpact_5day <- tv_ad_workings_causalimpact_5day %>% 
+    mutate(p_value = test_output_5day_df$p_value,
+           expected_avg_sessions = test_output_5day_df$expected,
+           predicted_avg_sessions = test_output_5day_df$predicted,
+           effect = test_output_5day_df$relative_effect,
+           standard_deviation = test_output_5day_df$relative_effect_stddev_pct) %>% 
+    mutate(p_value = as.numeric(p_value)) 
+  
+  write_csv(tv_ad_workings_causalimpact_5day, paste0("tv_ad_workings_causalimpact_5day_", 
+                                                     str_extract(string = i, pattern = "[0-9]"),
+                                                     ".csv"))
+}
+
+
+#### 9-day analysis - change timestamp of post intervention period ####
+
+filenames <- c("TV Attribution - Workings_2.csv")
+
+for (i in filenames) {
+  
+  tv_ad_workings_9day <- read_csv(i)
+  
+  tv_ad_workings_causalimpact_9day <- tv_ad_workings_9day %>%
+    clean_names() %>% 
+    mutate(device_category_web_traffic = tolower(device_category_web_traffic))
+  
+  
+  tv_ad_workings_causalimpact_9day <- tv_ad_workings_causalimpact_9day %>% 
+    separate(pre_intervention_period, c("pre_intervention_start", "pre_intervention_end"), ",") %>% 
+    separate(post_intervention_period, c("post_intervention_start", "post_intervention_end"), ",") %>% 
+    mutate(post_intervention_end = as.POSIXct(post_intervention_end, tz = "Asia/Jakarta") + lubridate::days(2)) %>% 
+    mutate(post_intervention_end = as.character(post_intervention_end))
+  
+  test_output_9day <- list()
+  
+  start_time <- Sys.time()
+  for (i in 1:nrow(tv_ad_workings_causalimpact_9day)) {
+    modeloutput <- eval_causal_Impact(tv_ad_workings_causalimpact_9day$device_category_web_traffic[i],
+                                      tv_ad_workings_causalimpact_9day$channel_grouping_web_traffic[i],
+                                      tv_ad_workings_causalimpact_9day$pre_intervention_start[i],
+                                      tv_ad_workings_causalimpact_9day$pre_intervention_end[i],
+                                      tv_ad_workings_causalimpact_9day$post_intervention_start[i],
+                                      tv_ad_workings_causalimpact_9day$post_intervention_end[i])
+    test_output_9day <- append(test_output_9day, modeloutput)
+  }
+  
+  test_output_9day_df <- data.frame(id=names(test_output_9day), values=unlist(test_output_9day))
+  test_output_9day_df <- test_output_9day_df %>% 
+    group_by_at(vars(-values)) %>% 
+    mutate(row_id=1:n()) %>% 
+    ungroup() %>% 
+    spread(key=id, value=values) %>%
+    select(-row_id)
+  
+  end_time <- Sys.time()
+  end_time - start_time
+  
+  tv_ad_workings_causalimpact_9day <- tv_ad_workings_causalimpact_9day %>% 
+    mutate(p_value = test_output_9day_df$p_value,
+           expected_avg_sessions = test_output_9day_df$expected,
+           predicted_avg_sessions = test_output_9day_df$predicted,
+           effect = test_output_9day_df$relative_effect,
+           standard_deviation = test_output_9day_df$relative_effect_stddev_pct) %>% 
+    mutate(p_value = as.numeric(p_value)) 
+  
+  write_csv(tv_ad_workings_causalimpact_9day, paste0("tv_ad_workings_causalimpact_9day_", 
+                                                     str_extract(string = i, pattern = "[0-9]"),
+                                                     ".csv"))
+}
+
+
+### Create table of sessions breakdown by date, and attributable sessions ####
+
+GA_org_direct_sessions_date_agg <- GA_org_direct_sessions %>% 
+  select(date, device_category, default_channel_grouping, sessions) %>% 
+  group_by(date, device_category, default_channel_grouping) %>% 
+  summarise(sessions = sum(sessions))
