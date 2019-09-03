@@ -436,6 +436,7 @@ p <- ggplot(data, aes(x=channel_grouping_web_traffic,
   geom_boxplot() +
   stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
   xlab("Channel Grouping") +
+  ylab("Sessions") +
   labs(color = "Device Category") +
   ggtitle("Number of Sessions from Attributable Ads") +
   geom_jitter(shape=16, position=position_jitter(0.2)) +
@@ -451,6 +452,7 @@ ggplot(data, aes(x=channel_grouping_web_traffic,
   geom_boxplot() +
   stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
   xlab("Channel Grouping") +
+  ylab("Sessions") + 
   labs(color = "Device Category") +
   ggtitle("Number of Sessions from Attributable Ads") +
   geom_jitter(shape=16, position=position_jitter(0.2)) +
@@ -638,3 +640,142 @@ GA_org_direct_sessions_date_agg <- GA_org_direct_sessions %>%
   select(date, device_category, default_channel_grouping, sessions) %>% 
   group_by(date, device_category, default_channel_grouping) %>% 
   summarise(sessions = sum(sessions))
+
+
+
+####Analyse dataset of ad buzz duration ####
+
+ad_buzz_df <- read_csv("daywise_tv_causalimpact_compilation.csv")
+ad_buzz_df <- ad_buzz_df %>% 
+  clean_names()
+
+
+#### table for 3 day buzz ####
+ad_buzz_df_3day <- ad_buzz_df %>% 
+  select(ad_date, program_name, ad_content_type, hourly_bucket_amended,
+         device_category_web_traffic, channel_grouping_web_traffic,
+         x3day_incremental_sessions_per_period_pred_avg, x3day_statistically_significant) %>% 
+  filter(x3day_statistically_significant == "Yes") %>% 
+  mutate(x3day_incremental_sessions_per_period_pred_avg = abs(x3day_incremental_sessions_per_period_pred_avg)) %>% 
+  mutate(ad_date = parse_date_time(ad_date, c("%d/%m/%Y %H:%M"), exact = TRUE))
+
+#### table for 5 day buzz #### 
+ad_buzz_df_5day <- ad_buzz_df %>% 
+  select(ad_date, program_name, ad_content_type, hourly_bucket_amended,
+         device_category_web_traffic, channel_grouping_web_traffic,
+         x5day_incremental_sessions_per_period_pred_avg, x5day_statistically_significant) %>% 
+  filter(x5day_statistically_significant == "Yes") %>% 
+  mutate(x5day_incremental_sessions_per_period_pred_avg = abs(x5day_incremental_sessions_per_period_pred_avg)) %>% 
+  mutate(ad_date = parse_date_time(ad_date, c("%d/%m/%Y %H:%M"), exact = TRUE))
+
+
+#### table for 9 day buzz #### 
+ad_buzz_df_9day <- ad_buzz_df %>% 
+  select(ad_date, program_name, ad_content_type, hourly_bucket_amended,
+         device_category_web_traffic, channel_grouping_web_traffic,
+         x9day_incremental_sessions_per_period_pred_avg, x9day_statistically_significant) %>% 
+  filter(x9day_statistically_significant == "Yes") %>% 
+  mutate(x9day_incremental_sessions_per_period_pred_avg = abs(x9day_incremental_sessions_per_period_pred_avg)) %>% 
+  mutate(ad_date = parse_date_time(ad_date, c("%d/%m/%Y %H:%M"), exact = TRUE))
+
+
+#### table for split of buzz duration by ad ####
+ad_buzz_df_effectiveness <- ad_buzz_df %>% 
+  select(ad_date, program_name, ad_content_type, hourly_bucket_amended,
+         device_category_web_traffic, channel_grouping_web_traffic,
+         ad_effectiveness_duration) %>% 
+  filter(!is.na(ad_effectiveness_duration)) %>% 
+  group_by(ad_effectiveness_duration) %>% 
+  summarise(ad_count = length(unique(ad_date)))
+
+
+### create boxplot for 3-day viz data ####
+p <- ggplot(ad_buzz_df_3day, aes(x=channel_grouping_web_traffic,
+                      y=x3day_incremental_sessions_per_period_pred_avg,
+                      color=device_category_web_traffic)) +
+  coord_flip() +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
+  xlab("Channel Grouping") + 
+  ylab("Sessions") +
+  labs(color = "Device Category") +
+  ggtitle("Number of Sessions from Attributable Ads") +
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  facet_grid(device_category_web_traffic ~ .)
+
+p <- ggplotly(p)
+p
+
+ggsave("3-day boxplot.png", units="in", width=6, height=3.5, dpi=400)
+dev.off()
+
+
+### create boxplot for 5-day viz data ####
+p <- ggplot(ad_buzz_df_5day, aes(x=channel_grouping_web_traffic,
+                                 y=x5day_incremental_sessions_per_period_pred_avg,
+                                 color=device_category_web_traffic)) +
+  coord_flip() +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
+  xlab("Channel Grouping") + 
+  ylab("Sessions") +
+  labs(color = "Device Category") +
+  ggtitle("Number of Sessions from Attributable Ads") +
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  facet_grid(device_category_web_traffic ~ .)
+
+p <- ggplotly(p)
+p
+
+ggsave("5-day boxplot.png", units="in", width=6, height=3.5, dpi=400)
+dev.off()
+
+
+### create boxplot for 9-day viz data ####
+p <- ggplot(ad_buzz_df_9day, aes(x=channel_grouping_web_traffic,
+                                 y=x9day_incremental_sessions_per_period_pred_avg,
+                                 color=device_category_web_traffic)) +
+  coord_flip() +
+  geom_boxplot() +
+  stat_summary(fun.y=mean, geom="point", shape=23, size=3) +
+  xlab("Channel Grouping") + 
+  ylab("Sessions") +
+  labs(color = "Device Category") +
+  ggtitle("Number of Sessions from Attributable Ads") +
+  geom_jitter(shape=16, position=position_jitter(0.2)) +
+  facet_grid(device_category_web_traffic ~ .)
+
+p <- ggplotly(p)
+p
+
+ggsave("9-day boxplot.png", units="in", width=6, height=3.5, dpi=400)
+dev.off()
+
+
+ad_buzz_df_summary <- ad_buzz_df %>% 
+  select(ad_date, program_name, ad_content_type, hourly_bucket_amended,
+         device_category_web_traffic, channel_grouping_web_traffic,
+         ad_effectiveness_duration) %>% 
+  filter(!is.null(ad_effectiveness_duration) & !is.na(ad_effectiveness_duration))
+
+
+#### create facet plot for cumulative ad sessions by device ####
+cumulative_ad_sessions_df <- read_csv("tv_ad_cumulative_sessions.csv")
+cumulative_ad_sessions <- cumulative_ad_sessions_df %>% 
+  clean_names()
+  
+
+ggplot(cumulative_ad_sessions, aes(x = days_after_ad, y = attributable_sessions)) + 
+  geom_bar(stat="identity") +
+  facet_wrap(vars(device_category), nrow = 3, scales = "free") +
+  ggtitle("Cumulative Attributable Sessions by No. of Days After Ad") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+p <- ggplotly(ggplot(cumulative_ad_sessions, aes(x = days_after_ad, y = attributable_sessions)) + 
+                geom_bar(stat="identity") +
+                facet_wrap(vars(device_category), nrow = 3, scales = "free") +
+                ggtitle("Cumulative Attributable Sessions by No. of Days After Ad") +
+                theme(plot.title = element_text(hjust = 0.5)))
+
+p
+         
