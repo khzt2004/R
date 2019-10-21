@@ -80,7 +80,6 @@ log %>%
   process_map(type = frequency('absolute', color_scale = "OrRd"))
 
 
-
 log %>% 
   filter_activity_frequency(perc = 0.50) %>%
   process_map(type = frequency('absolute', color_scale = "OrRd"))
