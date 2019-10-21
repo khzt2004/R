@@ -12,9 +12,9 @@ patients %>%
 
 
 
+#### get data from BigQuery ####
 
 project <- "api-project-929144044809"
-
 
 get_data_query <- paste0(
   "select fullvisitorid as fullvisitorid_caseid,
@@ -41,12 +41,14 @@ df_log <- bq_table_download(bq_project_query(project,
                                              get_data_query,
                                              use_legacy_sql = TRUE))
 
-
+#### export data from BQ and read the resulting csv ####
 query_results <- read.csv("df_log.csv")
 query_results <- query_results %>% 
   mutate(hit_timestamp = as.POSIXct(hit_timestamp),
          fullvisitorid_caseid = as.character(fullvisitorid_caseid))
 
+
+#### create the event log from query results ####
 log <- query_results %>%
   eventlog(
     case_id = "fullvisitorid_caseid",    # the user id (browser cookie)
@@ -57,6 +59,46 @@ log <- query_results %>%
     resource_id = "deviceCategory_resourceid"  # I fill this with device_type
   )
 
-# show activities
+#### show activities ####
 activity_log <- activities(log)
+
+#### resources ####
+resources_log <- resource_frequency(log, "resource-activity")
+
+
+#### precedence plot, 2 variations ####
+log %>%
+  precedence_matrix(type = "absolute") %>%
+  plot
+
+log %>%
+  precedence_matrix(type = "relative-consequent") %>%
+  plot
+
+#### process maps for visualising user flows ####
+log %>% 
+  process_map(type = frequency('absolute', color_scale = "OrRd"))
+
+
+
+log %>% 
+  filter_activity_frequency(perc = 0.50) %>%
+  process_map(type = frequency('absolute', color_scale = "OrRd"))
+
+
+log %>% 
+  filter_activity_presence(activities = "/CIB_ChooseFlight") %>%
+  process_map(type = frequency('absolute', color_scale = "OrRd"))
+
+
+log %>% 
+  plotly_trace_explorer(type = 'frequent', coverage = 0.70) %>% 
+  export_graph("traceExplorer.png")
+
+
+#### the processmonitR package contains some dashboards. ####
+resource_dashboard(log)
+activity_dashboard(log)
+
+
 
