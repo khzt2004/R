@@ -1,0 +1,44 @@
+Potential Roadblocks:
+
+Must provide data in the same format from BQ - queries can be replicated to some extent if client definitions are provided
+
+search/booking lead days - need it as a CD otherwise need to calculate manually
+
+Features:
+we can segment data by:
+device
+searched market (depends on CD in GA)
+
+
+Custom attribution data:
+Just obtain filterCombineDataFinal dataframe
+
+Interpretation:
+Channel [X] tends to appear earlier/later in the path to conversion
+
+
+combinedata (1000)
+-> 1.12s 
+-> XX (numeric)  
+
+
+combinedata (10000)
+-> 8.65s 
+-> XX (numeric)  
+
+
+combinedata (100000)
+-> 1.47mins 
+-> 1.36s (numeric)  
+
+
+combinedata (1,000,000)
+-> 12.098 mins 
+-> 7.5s (numeric)  
+
+combinedata(6000000)
+-> 2.3 hours
+
+transFullnoNA <- transFull[!is.na(transFull$device),]  ---> this line only ends up in 1 line of results
+
+
