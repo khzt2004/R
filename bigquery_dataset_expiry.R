@@ -2,7 +2,26 @@ library(bigrquery)
 library(tidyverse)
 
 
-dataset <- bq_project_datasets("XXXX-ga-bigquery")
+dataset <- bq_project_datasets("airnz-ga-bigquery")
+
+
+# list tables in a project
+
+dataset_register <- bq_dataset("airnz-ga-bigquery", "Master_Reporting_Data")
+
+table_list <- bq_dataset_tables(dataset_register)
+
+dataset_table_list <- list()
+
+for (i in 1:length(table_list)) {
+  k <- table_list[[i]]$table
+  dataset_table_list <- append(dataset_table_list, k)
+}
+
+dataset_table_list <- tibble(dataset_table_list) %>% 
+  rename(table_name = dataset_table_list)
+
+# ---------------------------------------------
 
 dataset_list <- list()
 
