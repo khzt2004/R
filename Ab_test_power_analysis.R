@@ -1,3 +1,5 @@
+# https://geoffruddock.com/run-ab-test-with-unequal-sample-size/
+
 library(pwr)
 
 # 50:50 split gives us 93% power
