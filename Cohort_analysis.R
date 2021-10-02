@@ -1,171 +1,55 @@
-#loading libraries
-library(tidyverse)
-library(ggplot2)
+library(curl)
+library(plyr)
 library(reshape2)
+library(tidyverse)
+library(RColorBrewer)
+library(colorRamps)
 
-# http://analyzecore.com/2015/05/03/cohort-analysis-with-heatmap/
 
-#simulating dataset
-cohorts <- data.frame()
-set.seed(10)
-for (i in c(1:100)) {
-  coh <- data.frame(cohort=i,
-                    date=c(i:100),
-                    week.lt=c(1:(100-i+1)),
-                    num=replicate(1, sample(c(1:40), 100-i+1, rep=TRUE)),
-                    av=replicate(1, sample(c(5:10), 100-i+1, rep=TRUE)))
-  coh$num[coh$week.lt==1] <- sample(c(90:100), 1, rep=TRUE)
-  ifelse(max(coh$date)>1, coh$num[coh$week.lt==2] <- sample(c(75:90), 1, rep=TRUE), NA)
-  ifelse(max(coh$date)>2, coh$num[coh$week.lt==3] <- sample(c(60:75), 1, rep=TRUE), NA)
-  ifelse(max(coh$date)>3, coh$num[coh$week.lt==4] <- sample(c(40:60), 1, rep=TRUE), NA)
-  ifelse(max(coh$date)>34,
-         {coh$num[coh$date==35] <- sample(c(60:85), 1, rep=TRUE)
-         coh$av[coh$date==35] <- 4},
-         NA)
-  ifelse(max(coh$date)>47,
-         {coh$num[coh$date==48] <- sample(c(60:85), 1, rep=TRUE)
-         coh$av[coh$date==48] <- 4},
-         NA)
-  ifelse(max(coh$date)>86,
-         {coh$num[coh$date==87] <- sample(c(60:85), 1, rep=TRUE)
-         coh$av[coh$date==87] <- 4},
-         NA)
-  ifelse(max(coh$date)>99,
-         {coh$num[coh$date==100] <- sample(c(60:85), 1, rep=TRUE)
-         coh$av[coh$date==100] <- 4},
-         NA)
-  coh$gr.marg <- coh$av*coh$num
-  cohorts <- rbind(cohorts, coh)
+dr <- read.csv(curl("https://github.com/khzt2004/R/raw/master/sample_date.csv"), stringsAsFactors = F )
+
+dr$date_add <- as.Date(dr$date_add)
+dr$date_add_month <- as.Date(cut(dr$date_add, breaks = "month"))
+dr <- subset(dr, (date_add_month > as.Date("2015-05-01") &   (date_add_month < as.Date("2016-06-01") )))
+number_of_months <-length(unique(as.character(dr$date_add_month)))
+
+Cohorts = data.frame() ## empty cohorts data frame. 
+for (m in unique(as.character(dr$date_add_month))){
+  u = subset(dr, dr$date_add_month == m) # data for month m
+  ulist = unique(u$user_id) # orders by unique users in month m
+  dr1 = subset(dr, dr$user_id %in% ulist) ## -- only month m users
+  dr = subset(dr, !(dr$user_id %in% ulist)) ## -- remove from dr
+  ## -- Number of orders by these users for every month
+  dr1s = ddply(dr1, .(date_add_month), summarize, total = length(user_id))
+  ## -- Combine the calculations into the Cohorts data frame. 
+  colnames(dr1s) = c("Month", m)
+  a = c(m, dr1s[,m])
+  a = data.frame(t(a))
+  Cohorts = rbind.fill(Cohorts, a)
 }
 
-cohorts$cohort <- formatC(cohorts$cohort, width=3, format='d', flag='0')
-cohorts$cohort <- paste('coh:week:', cohorts$cohort, sep='')
-cohorts$date <- formatC(cohorts$date, width=3, format='d', flag='0')
-cohorts$date <- paste('cal_week:', cohorts$date, sep='')
-cohorts$week.lt <- formatC(cohorts$week.lt, width=3, format='d', flag='0')
-cohorts$week.lt <- paste('week:', cohorts$week.lt, sep='')
+## Some more processing with the final data frame
+col_names = paste("Month", array(1:number_of_months), sep = " ")
+colnames(Cohorts) <- c("Month", col_names)
+Cohorts["Month"] <- as.Date(Cohorts$Month)
+Cohorts["max"] <- as.numeric(as.character(Cohorts[,2]))
 
-#calculating CLV to date
-cohorts <- cohorts %>%
-  group_by(cohort) %>%
-  mutate(clv=cumsum(gr.marg)/num[week.lt=='week:001']) %>%
-  ungroup()
+# plot dataframe
+df_plot <- melt(Cohorts, id.vars = c('Month', 'max'), value.name = 'Orders', variable.name = 'Month_after')
+df_plot <- na.omit(df_plot)
+df_plot["Value"] <- as.numeric(df_plot$Orders)
+df_plot["Pc_value"] <- ceiling(df_plot$Value*100/df_plot$max)
+df_plot["Percentage"] <- paste(ceiling(df_plot$Value*100/df_plot$max), "%", sep="")
+df_plot["Percentage_2"] <- ifelse(df_plot$Percentage == "100%", df_plot$Value , df_plot$Percentage)
 
-#color palette
-cols <- c("#e7f0fa", "#c9e2f6", "#95cbee", "#0099dc", "#4ab04a", "#ffd73e", "#eec73a", "#e29421", "#e29421", "#f05336", "#ce472e")
+## Cohorts tile chart ##
+hm.palette <- colorRampPalette((brewer.pal(9, 'YlOrRd')), space='Lab', bias=10)
+p <- ggplot() 
+p <- p + geom_tile(data = na.omit(df_plot), aes(x = Month, y = Month_after, fill=Value), width=31, height=1) 
+p <- p + geom_text(data =  na.omit(df_plot), aes(x = Month, y = Month_after, label = Percentage_2), color = "white")#, fontface = "bold")
+p <- p + scale_fill_gradientn(colours = hm.palette(100)) + theme_bw() + coord_flip() 
+p <- p + theme(panel.background = element_blank(), axis.line.x = element_blank(), panel.border = element_blank())
+p <- p + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position="none") + ylab("") 
+p <- p + xlab("Orders by new users") 
+print(p)
 
-#Heatmap based on Number of active customers
-t <- max(cohorts$num)
-
-ggplot(cohorts, aes(y=cohort, x=date, fill=num)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Cohort Activity Heatmap (number of customers who purchased - calendar view)")
-
-ggplot(cohorts, aes(y=cohort, x=week.lt, fill=num)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Cohort Activity Heatmap (number of customers who purchased - lifetime view)")
-
-# Heatmap based on Gross margin
-t <- max(cohorts$gr.marg)
-
-ggplot(cohorts, aes(y=cohort, x=date, fill=gr.marg)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Heatmap based on Gross margin (calendar view)")
-
-ggplot(cohorts, aes(y=cohort, x=week.lt, fill=gr.marg)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Heatmap based on Gross margin (lifetime view)")
-
-# Heatmap of per customer gross margin
-t <- max(cohorts$av)
-
-ggplot(cohorts, aes(y=cohort, x=date, fill=av)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Heatmap based on per customer gross margin (calendar view)")
-
-ggplot(cohorts, aes(y=cohort, x=week.lt, fill=av)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Heatmap based on per customer gross margin (lifetime view)")
-
-# Heatmap of CLV to date
-t <- max(cohorts$clv)
-
-ggplot(cohorts, aes(y=cohort, x=date, fill=clv)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Heatmap based on CLV to date of customers who ever purchased (calendar view)")
-
-ggplot(cohorts, aes(y=cohort, x=week.lt, fill=clv)) +
-  theme_minimal() +
-  geom_tile(colour="white", width=.9, height=.9) +
-  scale_fill_gradientn(colours=cols, limits=c(0, t),
-                       breaks=seq(0, t, by=t/4),
-                       labels=c("0", round(t/4*1, 1), round(t/4*2, 1), round(t/4*3, 1), round(t/4*4, 1)),
-                       guide=guide_colourbar(ticks=T, nbin=50, barheight=.5, label=T, barwidth=10)) +
-  theme(legend.position='bottom',
-        legend.direction="horizontal",
-        plot.title = element_text(size=20, face="bold", vjust=2),
-        axis.text.x=element_text(size=8, angle=90, hjust=.5, vjust=.5, face="plain")) +
-  ggtitle("Heatmap based on CLV to date of customers who ever purchased (lifetime view)")
